@@ -1,4 +1,9 @@
+#Source
 *.class
+
+#Output
+target
+bin
 
 # Package Files #
 *.jar
