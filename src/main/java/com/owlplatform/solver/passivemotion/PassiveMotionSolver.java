@@ -40,15 +40,81 @@ import com.owlplatform.solver.passivemotion.gui.panels.UserInterfaceAdapter;
 import com.owlplatform.worldmodel.Attribute;
 import com.owlplatform.worldmodel.client.ClientWorldConnection;
 import com.owlplatform.worldmodel.client.ClientWorldModelInterface;
+import com.owlplatform.worldmodel.client.StepResponse;
+import com.owlplatform.worldmodel.client.WorldState;
 import com.owlplatform.worldmodel.client.protocol.messages.DataResponseMessage;
 import com.owlplatform.worldmodel.client.protocol.messages.IdSearchResponseMessage;
 import com.owlplatform.worldmodel.client.protocol.messages.SnapshotRequestMessage;
 import com.owlplatform.worldmodel.solver.SolverWorldConnection;
 import com.owlplatform.worldmodel.solver.protocol.messages.AttributeAnnounceMessage.AttributeSpecification;
 import com.owlplatform.worldmodel.types.DataConverter;
+import com.owlplatform.worldmodel.types.DoubleConverter;
+import com.owlplatform.worldmodel.types.StringConverter;
 import com.thoughtworks.xstream.XStream;
 
 public class PassiveMotionSolver extends Thread {
+  private static final class VarianceHandler extends Thread {
+  
+    private final PassiveMotionSolver handler;
+    private boolean keepRunning = true;
+  
+    public VarianceHandler(final PassiveMotionSolver handler) {
+      this.handler = handler;
+    }
+  
+    @Override
+    public void run() {
+      main: while (this.keepRunning) {
+        log.info("Requesting RSSI variance values.");
+        if (this.handler.clientWM == null) {
+          log.info("Variance Handler exiting.");
+  
+          break;
+        }
+        final StepResponse rssiResponse = this.handler.clientWM.getStreamRequest(
+            ".*", System.currentTimeMillis(), 0, "link variance");
+  
+        WorldState state = null;
+        while (!rssiResponse.isComplete() && !rssiResponse.isError()
+            && this.keepRunning) {
+          try {
+            state = rssiResponse.next();
+  
+            if (state == null) {
+              break;
+            }
+            for (String uri : state.getIdentifiers()) {
+  
+              int txSensStart = uri.indexOf('.');
+              int rxSensStart = uri.lastIndexOf('.');
+              String txerSensor = uri.substring(txSensStart + 1, rxSensStart);
+              String rxerSensor = uri.substring(rxSensStart + 1);
+              Collection<Attribute> attribs = state.getState(uri);
+              if (attribs == null || !attribs.iterator().hasNext()) {
+                continue;
+              }
+              Attribute linkAvg = attribs.iterator().next();
+              double value = DoubleConverter.get()
+                  .decode(linkAvg.getData());
+              if (this.handler.algorithm != null) {
+                this.handler.algorithm.addVariance(rxerSensor, txerSensor,
+                    (float) value, linkAvg.getCreationDate());
+              }
+            }
+          } catch (Exception e) {
+            e.printStackTrace();
+            continue main;
+          }
+        }
+        rssiResponse.cancel();
+      }
+    }
+  
+    public void shutdown() {
+      this.keepRunning = false;
+    }
+  }
+
   private static final Logger log = LoggerFactory
       .getLogger(PassiveMotionSolver.class);
 
@@ -61,6 +127,11 @@ public class PassiveMotionSolver extends Thread {
    * The name of this solver.
    */
   public static final String SOLVER_ORIGIN_STRING = "java.solver.passive_motion.v2";
+
+  /**
+   * How often to send solutions (if they are available).
+   */
+  public static final long UPDATE_FREQUENCY = 1000l;
 
   /**
    * For producing the passive motion results.
@@ -150,18 +221,21 @@ public class PassiveMotionSolver extends Thread {
 
   public void run() {
 
-    // Tell the distributor the name of this solver's solution
-    AttributeSpecification spec = new AttributeSpecification();
-    spec.setIsOnDemand(false);
-    spec.setAttributeName(GENERATED_ATTRIBUTE_NAME);
-
     // Connect to aggregator, distributor, and world server
-    this.startConnections();
+    if (!this.startConnections()) {
+      log.error("Unable to connect to the world model.");
+      return;
+    }
+
+    if (!this.launchWorkers()) {
+      this.shutdown();
+      return;
+    }
 
     long lastUpdateTime = 0l;
     while (true) {
       long now = System.currentTimeMillis();
-      if (now - lastUpdateTime > 500l) {
+      if (now - lastUpdateTime > 1000l) {
         FilteredTileResultSet resultSet = this.algorithm.generateResults();
         if (this.userInterface != null) {
           this.userInterface.solutionGenerated(resultSet);
@@ -191,13 +265,39 @@ public class PassiveMotionSolver extends Thread {
         }
         lastUpdateTime = now;
       }
-      try {
-        Thread.sleep(500l - (now - lastUpdateTime));
-      } catch (InterruptedException ie) {
-        // Ignored
+      if (500l - (now - lastUpdateTime) > 2) {
+        try {
+          Thread.sleep(500l - (now - lastUpdateTime));
+        } catch (InterruptedException ie) {
+          // Ignored
+        }
       }
-
     }
+  }
+  
+  
+  
+  private boolean launchWorkers() {
+    VarianceHandler handler = new VarianceHandler(this);
+
+    return false;
+  }
+  
+  void updateReceiver(){
+    
+  }
+  
+  void updateTransmitter(){
+    
+  }
+  
+  void updateRssi(){
+    
+  }
+
+  private void shutdown() {
+    this.solverWM.disconnect();
+    this.clientWM.disconnect();
   }
 
   public void setRegionImageUri(String regionImageUri) {
@@ -229,10 +329,22 @@ public class PassiveMotionSolver extends Thread {
         .println("Usage: <world model host> <solver port> <client port> <region name> [--gui]");
   }
 
-  public void startConnections() {
+  /**
+   * Connects to the world model as a solver and client.
+   * 
+   * @return {@code true} on connection success, else {@code false}.
+   */
+  public boolean startConnections() {
 
-    // TODO: World Model connections
-
+    if (!this.solverWM.connect(10000)) {
+      log.error("Unable to connect to the world model as a solver.");
+      return false;
+    }
+    if (!this.clientWM.connect(10000)) {
+      log.error("Unable to connect to the world model as a client.");
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -361,10 +473,8 @@ public class PassiveMotionSolver extends Thread {
               field.getData());
           // FIXME: Shouldn't hard-code, where do we consolidate the
           // device ID size?
-          byte[] deviceId = new byte[16];
-          for (int i = 0; i < 8; ++i) {
-            deviceId[deviceId.length - 1 - i] = (byte) (id >> (8 * i));
-          }
+          String deviceId = StringConverter.get().decode(field.getData()).substring(1); 
+          
           txer.setDeviceId(deviceId);
         } else if ("region_uri".equalsIgnoreCase(field.getAttributeName())) {
           String region = (String) DataConverter.decode(
@@ -393,14 +503,7 @@ public class PassiveMotionSolver extends Thread {
               field.getData());
           rxer.setyLocation(yPos.floatValue());
         } else if ("id".equalsIgnoreCase(field.getAttributeName())) {
-          Long id = (Long) DataConverter.decode(field.getAttributeName(),
-              field.getData());
-          // FIXME: Shouldn't hard-code, where do we consolidate the
-          // device ID size?
-          byte[] deviceId = new byte[16];
-          for (int i = 0; i < 8; ++i) {
-            deviceId[deviceId.length - 1 - i] = (byte) (id >> (8 * i));
-          }
+          String deviceId = StringConverter.get().decode(field.getData()).substring(1); 
           rxer.setDeviceId(deviceId);
         } else if ("region_uri".equalsIgnoreCase(field.getAttributeName())) {
           String region = (String) DataConverter.decode(

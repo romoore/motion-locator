@@ -17,72 +17,61 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-
-
 package com.owlplatform.solver.passivemotion;
 
 import java.awt.geom.Line2D;
 
 import com.owlplatform.common.util.NumericUtils;
 
+public class RSSILine {
+  private float value;
 
-public class RSSILine
-{
-    private float value;
-    
-    private Line2D.Float line;
-    
-    private Transmitter transmitter;
-    
-    private Receiver receiver;
+  private Line2D.Float line;
 
-    public float getValue()
-    {
-        return value;
-    }
+  private Transmitter transmitter;
 
-    public void setValue(float value)
-    {
-        this.value = value;
-    }
+  private Receiver receiver;
 
-    public Line2D.Float getLine()
-    {
-        return line;
-    }
+  public float getValue() {
+    return value;
+  }
 
-    public void setLine(Line2D.Float line)
-    {
-        this.line = line;
-    }
+  public void setValue(float value) {
+    this.value = value;
+  }
 
-    public Transmitter getTransmitter()
-    {
-        return transmitter;
-    }
+  public Line2D.Float getLine() {
+    return line;
+  }
 
-    public void setTransmitter(Transmitter transmitter)
-    {
-        this.transmitter = transmitter;
-    }
+  public void setLine(Line2D.Float line) {
+    this.line = line;
+  }
 
-    public Receiver getReceiver()
-    {
-        return receiver;
-    }
+  public Transmitter getTransmitter() {
+    return transmitter;
+  }
 
-    public void setReceiver(Receiver receiver)
-    {
-        this.receiver = receiver;
-    }
-    
-    @Override
-    public String toString()
-    {
-    	StringBuffer sb = new StringBuffer();
-    	
-    	sb.append("RSSI Line Rx(").append(NumericUtils.toHexString(this.receiver.getDeviceId())).append(") Tx(").append(NumericUtils.toHexString(this.transmitter.getDeviceId())).append("): ").append(this.value);
-    	
-    	return sb.toString();
-    }
+  public void setTransmitter(Transmitter transmitter) {
+    this.transmitter = transmitter;
+  }
+
+  public Receiver getReceiver() {
+    return receiver;
+  }
+
+  public void setReceiver(Receiver receiver) {
+    this.receiver = receiver;
+  }
+
+  @Override
+  public String toString() {
+    StringBuffer sb = new StringBuffer();
+
+    sb.append("RSSI Line Rx(").append(this.receiver.getDeviceId())
+        .append(") Tx(").append(this.transmitter.getDeviceId()).append("): ")
+        .append(this.value);
+
+    return sb.toString();
+  }
 }

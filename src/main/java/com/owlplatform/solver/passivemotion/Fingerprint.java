@@ -29,8 +29,8 @@ public class Fingerprint {
 
     private String fingerprintName;
     private byte physicalLayer;
-    private byte[] receiverId;
-    private HashMap<HashableByteArray, Float> rssiValues = new HashMap<HashableByteArray, Float>();
+    private String receiverId;
+    private HashMap<String, Float> rssiValues = new HashMap<String, Float>();
 
     public byte getPhysicalLayer() {
         return physicalLayer;
@@ -40,19 +40,19 @@ public class Fingerprint {
         this.physicalLayer = physicalLayer;
     }
 
-    public byte[] getReceiverId() {
+    public String getReceiverId() {
         return receiverId;
     }
 
-    public void setReceiverId(byte[] transmitterId) {
-        this.receiverId = transmitterId;
+    public void setReceiverId(String receiverId) {
+        this.receiverId = receiverId;
     }
 
-    public HashMap<HashableByteArray, Float> getRssiValues() {
+    public HashMap<String, Float> getRssiValues() {
         return rssiValues;
     }
 
-    public void setRssiValues(HashMap<HashableByteArray, Float> rssiValues) {
+    public void setRssiValues(HashMap<String, Float> rssiValues) {
         this.rssiValues = rssiValues;
     }
 
@@ -66,10 +66,10 @@ public class Fingerprint {
         }
         
         sb.append("Fingerprint [").append(physicalLayer).append("] (").append(
-                NumericUtils.toHexString(this.receiverId)).append(")");
-        for (HashableByteArray receiver : this.rssiValues.keySet()) {
+                this.receiverId).append(")");
+        for (String receiver : this.rssiValues.keySet()) {
             sb.append("\n\t").append(
-                    NumericUtils.toHexString(receiver.getData())).append(": ")
+                    receiver).append(": ")
                     .append(this.rssiValues.get(receiver));
         }
 

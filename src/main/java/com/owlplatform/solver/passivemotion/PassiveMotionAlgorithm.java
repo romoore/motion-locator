@@ -55,32 +55,24 @@ public class PassiveMotionAlgorithm {
 
 	protected AlgorithmConfig config;
 
-	protected ConcurrentHashMap<HashableByteArray, Receiver> receivers = new ConcurrentHashMap<HashableByteArray, Receiver>();
+	protected ConcurrentHashMap<String, Receiver> receivers = new ConcurrentHashMap<String, Receiver>();
 
-	protected ConcurrentHashMap<HashableByteArray, Transmitter> transmitters = new ConcurrentHashMap<HashableByteArray, Transmitter>();
+	protected ConcurrentHashMap<String, Transmitter> transmitters = new ConcurrentHashMap<String, Transmitter>();
 
 	protected ScoredTile[] tiles;
 
-
-
-	protected StdDevFingerprintGenerator stdDevFingerprinter;
+	protected StdDevFingerprintGenerator stdDevFingerprinter = new StdDevFingerprintGenerator();
 
 	public PassiveMotionAlgorithm(AlgorithmConfig config) {
 		super();
 		this.config = config;
+		this.stdDevFingerprinter.setMaxNumSamples(3);
+		this.stdDevFingerprinter.setMaxSampleAge(5000l);
 	}
 
-	public void addSample(SampleMessage sample) {
-		this.stdDevFingerprinter.addSample(sample);
-	}
-
-	public StdDevFingerprintGenerator getStdDevFingerprinter() {
-		return stdDevFingerprinter;
-	}
-
-	public void setStdDevFingerprinter(
-			StdDevFingerprintGenerator stdDevFingerprinter) {
-		this.stdDevFingerprinter = stdDevFingerprinter;
+	
+	public void addVariance(final String receiver, final String transmitter, final float variance, final long timestamp){
+	  this.stdDevFingerprinter.addVariance(transmitter, receiver, variance, timestamp);
 	}
 
 	public String getRegionUri() {
@@ -134,15 +126,14 @@ public class PassiveMotionAlgorithm {
 	
 
 	public void addReceiver(Receiver receiver) {
-		HashableByteArray hash = new HashableByteArray(receiver.getDeviceId());
-		this.receivers.put(hash, receiver);
+		
+		this.receivers.put(receiver.getDeviceId(), receiver);
 		log.debug("Added {}", receiver);
 	}
 
 	public void addTransmitter(Transmitter transmitter) {
-		HashableByteArray hash = new HashableByteArray(transmitter
-				.getDeviceId());
-		this.transmitters.put(hash, transmitter);
+		
+		this.transmitters.put(transmitter.getDeviceId(), transmitter);
 		log.debug("Added {}", transmitter);
 	}
 
@@ -521,22 +512,19 @@ public class PassiveMotionAlgorithm {
 		ArrayList<RSSILine> allLines = new ArrayList<RSSILine>();
 
 		for (Fingerprint fingerprint : fingerprints) {
-			HashableByteArray transmitterHash = new HashableByteArray(
-					fingerprint.getReceiverId());
-			Transmitter transmitter = this.transmitters.get(transmitterHash);
+		  // FIXME: What the hell is this? Left over from old code, but is it receiver or transmitter?
+			Transmitter transmitter = this.transmitters.get(fingerprint.getReceiverId());
 			if (transmitter == null) {
-				log.debug("Unknown transmitter {}. Skipping...", NumericUtils
-						.toHexString(fingerprint.getReceiverId()));
+				log.debug("Unknown transmitter {}. Skipping...", fingerprint.getReceiverId());
 				continue;
 			}
 
-			for (HashableByteArray receiverId : fingerprint.getRssiValues()
+			for (String receiverId : fingerprint.getRssiValues()
 					.keySet()) {
 				RSSILine line = new RSSILine();
 				Receiver receiver = this.receivers.get(receiverId);
 				if (receiver == null) {
-					log.warn("Unknown receiver {}. Skipping...", NumericUtils
-							.toHexString(receiverId.getData()));
+					log.warn("Unknown receiver {}. Skipping...", receiverId);
 					continue;
 				}
 
@@ -545,10 +533,10 @@ public class PassiveMotionAlgorithm {
 					log
 							.warn(
 									"Missing Std. Dev. Value for Tx: {}, Rx: {}. Skipping...",
-									NumericUtils.toHexString(fingerprint
-											.getReceiverId()),
-									NumericUtils.toHexString(receiver
-											.getDeviceId()));
+									fingerprint
+											.getReceiverId(),
+									receiver
+											.getDeviceId());
 					continue;
 				}
 				if (value.floatValue() <= this.config.stdDevNoiseThreshold) {
@@ -663,4 +651,15 @@ public class PassiveMotionAlgorithm {
 		sb.append(String.format(" %4.2f\n", allTiles[0][0].getTile().width));
 		return sb.toString();
 	}
+
+
+  public StdDevFingerprintGenerator getStdDevFingerprinter() {
+    return stdDevFingerprinter;
+  }
+
+
+  public void setStdDevFingerprinter(
+      StdDevFingerprintGenerator stdDevFingerprinter) {
+    this.stdDevFingerprinter = stdDevFingerprinter;
+  }
 }

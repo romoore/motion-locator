@@ -19,7 +19,6 @@
 
 package com.owlplatform.solver.passivemotion;
 
-import com.owlplatform.common.util.NumericUtils;
 
 
 
@@ -31,7 +30,7 @@ public class Transmitter {
 
 	private float yLocation;
 
-	private byte[] deviceId;
+	private String deviceId;
 
 	public String getRegionUri() {
 		return regionUri;
@@ -57,11 +56,11 @@ public class Transmitter {
 		this.yLocation = yLocation;
 	}
 
-	public byte[] getDeviceId() {
+	public String getDeviceId() {
 		return deviceId;
 	}
 
-	public void setDeviceId(byte[] deviceId) {
+	public void setDeviceId(String deviceId) {
 		this.deviceId = deviceId;
 	}
 
@@ -70,7 +69,7 @@ public class Transmitter {
 		StringBuffer sb = new StringBuffer();
 
 		sb.append("Transmitter (").append(
-				NumericUtils.toHexString(this.deviceId)).append(") in \"")
+				this.deviceId).append(") in \"")
 				.append(this.regionUri).append("\" @ (").append(this.xLocation)
 				.append(", ").append(this.yLocation).append(")");
 
