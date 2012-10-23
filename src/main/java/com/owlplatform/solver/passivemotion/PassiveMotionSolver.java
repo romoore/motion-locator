@@ -54,20 +54,12 @@ import com.owlplatform.worldmodel.solver.protocol.messages.StartOnDemandMessage;
 import com.owlplatform.worldmodel.solver.protocol.messages.StopOnDemandMessage;
 import com.owlplatform.worldmodel.types.DataConverter;
 
-public class PassiveMotionSolver extends Thread implements
-
-com.owlplatform.worldmodel.solver.listeners.ConnectionListener,
-    com.owlplatform.worldmodel.client.listeners.ConnectionListener,
-    DataListener, com.owlplatform.worldmodel.solver.listeners.DataListener {
+public class PassiveMotionSolver extends Thread {
   private static final Logger log = LoggerFactory
       .getLogger(PassiveMotionSolver.class);
 
   public static final String GENERATED_ATTRIBUTE_NAME = "passive motion.tile";
   public static final String SOLVER_ORIGIN_STRING = "java.solver.passive_motion.v1";
-
-  private SolverWorldModelInterface solverWMI;
-
-  private ClientWorldModelInterface clientWMI;
 
   private PassiveMotionAlgorithm algorithm = new PassiveMotionAlgorithm();
 
@@ -104,19 +96,10 @@ com.owlplatform.worldmodel.solver.listeners.ConnectionListener,
       int distPort, String worldHost, int worldPort) {
 
     // Configure the distributor
-    this.solverWMI = new SolverWorldModelInterface();
-    this.solverWMI.setHost(distHost);
-    this.solverWMI.setPort(distPort);
-    this.solverWMI.addConnectionListener(this);
-    this.solverWMI.addDataListener(this);
-    this.solverWMI.setOriginString(SOLVER_ORIGIN_STRING);
+   
 
     // Configure the World Server
-    this.clientWMI = new ClientWorldModelInterface();
-    this.clientWMI.setHost(worldHost);
-    this.clientWMI.setPort(worldPort);
-    this.clientWMI.addDataListener(this);
-    this.clientWMI.addConnectionListener(this);
+    
 
     // Configure the fingerprinter
     StdDevFingerprintGenerator fingerprinter = new StdDevFingerprintGenerator();
@@ -142,21 +125,7 @@ com.owlplatform.worldmodel.solver.listeners.ConnectionListener,
     AttributeSpecification spec = new AttributeSpecification();
     spec.setIsOnDemand(false);
     spec.setAttributeName(GENERATED_ATTRIBUTE_NAME);
-    this.solverWMI.addAttribute(spec);
-
-    // Distributor connection parameters
-    this.solverWMI.setConnectionRetryDelay(10000l);
-    this.solverWMI.setConnectionTimeout(10000l);
-    this.solverWMI.setStayConnected(true);
-    this.solverWMI.setDisconnectOnException(true);
-    this.solverWMI.setOriginString(SOLVER_ORIGIN_STRING);
-
-    // World Server connection parameters
-    this.clientWMI.setConnectionRetryDelay(10000l);
-    this.clientWMI.setConnectionTimeout(10000l);
-    this.clientWMI.setStayConnected(true);
-    this.clientWMI.setDisconnectOnException(true);
-
+  
     // Connect to aggregator, distributor, and world server
     this.startConnections();
 
@@ -188,8 +157,7 @@ com.owlplatform.worldmodel.solver.listeners.ConnectionListener,
           solution.setAttributeName(GENERATED_ATTRIBUTE_NAME);
 
           ArrayList<Attribute> solutions = new ArrayList<Attribute>();
-
-          this.solverWMI.updateAttributes(solutions);
+          // TODO: Send attributes
 
         }
         lastUpdateTime = now;
@@ -235,16 +203,7 @@ com.owlplatform.worldmodel.solver.listeners.ConnectionListener,
   public void startConnections() {
 
    
-    if (!this.solverWMI.connect(10000l)) {
-      log.error("Could not establish connection to the distributor at {}:{}.",
-          this.solverWMI.getHost(), this.solverWMI.getPort());
-      System.exit(1);
-    }
-    if (!this.clientWMI.connect(10000l)) {
-      log.error("Could not establish connection to the world server at {}:{}.",
-          this.clientWMI.getHost(), this.clientWMI.getPort());
-      System.exit(1);
-    }
+    // TODO: World Model connections
 
   }
 
@@ -289,14 +248,9 @@ com.owlplatform.worldmodel.solver.listeners.ConnectionListener,
     this.userInterface = userInterface;
   }
 
-  @Override
-  public void requestCompleted(ClientWorldModelInterface worldModel,
-      AbstractRequestMessage message) {
-    // TODO Auto-generated method stub
+  
 
-  }
-
-  @Override
+  // FIXME: Got a response from the world model, parse it!
   public void dataResponseReceived(ClientWorldModelInterface worldModel,
       DataResponseMessage message) {
     String uri = message.getId();
@@ -433,7 +387,7 @@ com.owlplatform.worldmodel.solver.listeners.ConnectionListener,
     }
   }
 
-  @Override
+  // TODO: Got a search response from the world model.
   public void idSearchResponseReceived(ClientWorldModelInterface worldModel,
       IdSearchResponseMessage message) {
     // Is this the receiver search?
@@ -449,94 +403,12 @@ com.owlplatform.worldmodel.solver.listeners.ConnectionListener,
       request.setEndTimestamp(System.currentTimeMillis());
       request.setIdRegex(uri);
       request.setAttributeRegexes(new String[] { ".*" });
-      this.clientWMI.sendMessage(request);
+      // TODO: Get a streaming request for transmitter/receiver locations
     }
   }
 
-  @Override
-  public void attributeAliasesReceived(
-      ClientWorldModelInterface clientWorldModelInterface,
-      AttributeAliasMessage message) {
-    // TODO Auto-generated method stub
+ 
 
-  }
-
-  @Override
-  public void originAliasesReceived(
-      ClientWorldModelInterface clientWorldModelInterface,
-      OriginAliasMessage message) {
-    // TODO Auto-generated method stub
-
-  }
-
-  @Override
-  public void connectionInterrupted(SolverWorldModelInterface worldModel) {
-    this.canSendSolutions = false;
-  }
-
-  @Override
-  public void connectionEnded(SolverWorldModelInterface worldModel) {
-    log.error("Connection to {} has ended.  Exiting solver.", worldModel);
-    
-    this.clientWMI.disconnect();
-    System.exit(1);
-  }
-
-  @Override
-  public void connectionEstablished(SolverWorldModelInterface worldModel) {
-    // TODO Auto-generated method stub
-
-  }
-
-  @Override
-  public void startOnDemandReceived(SolverWorldModelInterface worldModel,
-      StartOnDemandMessage message) {
-    // TODO Auto-generated method stub
-
-  }
-
-  @Override
-  public void stopOnDemandReceived(SolverWorldModelInterface worldModel,
-      StopOnDemandMessage message) {
-    // TODO Auto-generated method stub
-
-  }
-
-  @Override
-  public void attributeSpecificationsSent(SolverWorldModelInterface worldModel,
-      AttributeAnnounceMessage message) {
-    // Once the solution spec message is sent, we can generate solutions
-    // TODO: Is this overcautious?
-    this.canSendSolutions = true;
-  }
-
-  @Override
-  public void connectionInterrupted(ClientWorldModelInterface worldModel) {
-    // TODO Auto-generated method stub
-
-  }
-
-  @Override
-  public void connectionEnded(ClientWorldModelInterface worldModel) {
-    log.error("Connection to {} has ended.  Exiting solver.", worldModel);
-  
-    this.solverWMI.disconnect();
-    System.exit(1);
-  }
-
-  @Override
-  public void connectionEstablished(ClientWorldModelInterface worldModel) {
-    this.clientWMI.searchIdRegex("region.winlab");
-    this.clientWMI.searchIdRegex("winlab.*.transmitter.*");
-    this.clientWMI.searchIdRegex("winlab.*.receiver.*");
-
-  }
-
-  @Override
-  public void originPreferenceSent(ClientWorldModelInterface worldModel,
-      OriginPreferenceMessage message) {
-    // TODO Auto-generated method stub
-
-  }
+ 
 
 }
