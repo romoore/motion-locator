@@ -16,7 +16,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-package org.grailrtls.solver.passivemotion.gui.panels;
+package com.owlplatform.solver.passivemotion.gui.panels;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
@@ -43,10 +43,11 @@ import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
-import org.grailrtls.solver.passivemotion.RSSILine;
-import org.grailrtls.solver.passivemotion.ScoredTile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.owlplatform.solver.passivemotion.RSSILine;
+import com.owlplatform.solver.passivemotion.ScoredTile;
 
 public class TileViewPanel extends JPanel {
 

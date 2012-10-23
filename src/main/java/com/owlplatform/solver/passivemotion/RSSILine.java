@@ -19,7 +19,7 @@
 
 
 
-package org.grailrtls.solver.passivemotion;
+package com.owlplatform.solver.passivemotion;
 
 import java.awt.geom.Line2D;
 

@@ -17,7 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.grailrtls.solver.passivemotion.gui.panels;
+package com.owlplatform.solver.passivemotion.gui.panels;
 
 import java.awt.GridLayout;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,9 +29,10 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import org.grailrtls.solver.passivemotion.PassiveMotionAlgorithm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.owlplatform.solver.passivemotion.PassiveMotionAlgorithm;
 
 public class KernelPanel extends JPanel implements ChangeListener{
 

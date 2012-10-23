@@ -17,7 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.grailrtls.solver.passivemotion;
+package com.owlplatform.solver.passivemotion;
 
 import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
@@ -31,9 +31,10 @@ import javax.print.attribute.standard.Finishings;
 import org.grailrtls.libcommon.SampleMessage;
 import org.grailrtls.libcommon.util.HashableByteArray;
 import org.grailrtls.libcommon.util.NumericUtils;
-import org.grailrtls.solver.passivemotion.StdDevFingerprintGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.owlplatform.solver.passivemotion.StdDevFingerprintGenerator;
 
 public class PassiveMotionAlgorithm {
 

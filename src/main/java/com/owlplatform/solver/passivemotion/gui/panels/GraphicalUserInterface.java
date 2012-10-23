@@ -17,7 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.grailrtls.solver.passivemotion.gui.panels;
+package com.owlplatform.solver.passivemotion.gui.panels;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -31,8 +31,8 @@ import javax.swing.JFrame;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 
-import org.grailrtls.solver.passivemotion.ScoredTile;
-import org.grailrtls.solver.passivemotion.FilteredTileResultSet;
+import com.owlplatform.solver.passivemotion.FilteredTileResultSet;
+import com.owlplatform.solver.passivemotion.ScoredTile;
 
 public class GraphicalUserInterface extends JFrame implements
 		UserInterfaceAdapter {

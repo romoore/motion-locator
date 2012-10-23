@@ -16,12 +16,12 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-package org.grailrtls.solver.passivemotion.gui.panels;
+package com.owlplatform.solver.passivemotion.gui.panels;
 
 import java.awt.image.BufferedImage;
 
-import org.grailrtls.solver.passivemotion.ScoredTile;
-import org.grailrtls.solver.passivemotion.FilteredTileResultSet;
+import com.owlplatform.solver.passivemotion.FilteredTileResultSet;
+import com.owlplatform.solver.passivemotion.ScoredTile;
 
 public interface UserInterfaceAdapter {
 	

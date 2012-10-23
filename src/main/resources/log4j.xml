@@ -36,7 +36,7 @@
 	<!--  Control logging verbosity for a specific package or class -->
 	<!--  Disabled for now -->
 	<!-- 
-	<logger name="org.grailrtls.solver.passivemotion.PassiveMotionSolver">
+	<logger name="com.owlplatform.solver.passivemotion.PassiveMotionSolver">
 	  <level value="debug" />
 	  <appender-ref="console" />
 	</logger>

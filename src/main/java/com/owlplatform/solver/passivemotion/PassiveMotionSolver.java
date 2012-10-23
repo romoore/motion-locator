@@ -17,7 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package org.grailrtls.solver.passivemotion;
+package com.owlplatform.solver.passivemotion;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -56,10 +56,11 @@ import org.grailrtls.libworldmodel.solver.protocol.messages.TypeAnnounceMessage;
 import org.grailrtls.libworldmodel.solver.protocol.messages.TypeAnnounceMessage.TypeSpecification;
 import org.grailrtls.libworldmodel.types.DataConverter;
 import org.grailrtls.libworldmodel.types.TypeConverter;
-import org.grailrtls.solver.passivemotion.gui.panels.GraphicalUserInterface;
-import org.grailrtls.solver.passivemotion.gui.panels.UserInterfaceAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.owlplatform.solver.passivemotion.gui.panels.GraphicalUserInterface;
+import com.owlplatform.solver.passivemotion.gui.panels.UserInterfaceAdapter;
 
 public class PassiveMotionSolver extends Thread implements SampleListener,
 		ConnectionListener,
