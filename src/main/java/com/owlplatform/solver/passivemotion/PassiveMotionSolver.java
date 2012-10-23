@@ -22,6 +22,7 @@ package com.owlplatform.solver.passivemotion;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -37,39 +38,84 @@ import org.slf4j.LoggerFactory;
 import com.owlplatform.solver.passivemotion.gui.panels.GraphicalUserInterface;
 import com.owlplatform.solver.passivemotion.gui.panels.UserInterfaceAdapter;
 import com.owlplatform.worldmodel.Attribute;
+import com.owlplatform.worldmodel.client.ClientWorldConnection;
 import com.owlplatform.worldmodel.client.ClientWorldModelInterface;
 import com.owlplatform.worldmodel.client.protocol.messages.DataResponseMessage;
 import com.owlplatform.worldmodel.client.protocol.messages.IdSearchResponseMessage;
 import com.owlplatform.worldmodel.client.protocol.messages.SnapshotRequestMessage;
+import com.owlplatform.worldmodel.solver.SolverWorldConnection;
 import com.owlplatform.worldmodel.solver.protocol.messages.AttributeAnnounceMessage.AttributeSpecification;
 import com.owlplatform.worldmodel.types.DataConverter;
+import com.thoughtworks.xstream.XStream;
 
 public class PassiveMotionSolver extends Thread {
   private static final Logger log = LoggerFactory
       .getLogger(PassiveMotionSolver.class);
 
+  /**
+   * The name of the attribute this solver will produce.
+   */
   public static final String GENERATED_ATTRIBUTE_NAME = "passive motion.tile";
-  public static final String SOLVER_ORIGIN_STRING = "java.solver.passive_motion.v1";
 
-  private PassiveMotionAlgorithm algorithm = new PassiveMotionAlgorithm();
+  /**
+   * The name of this solver.
+   */
+  public static final String SOLVER_ORIGIN_STRING = "java.solver.passive_motion.v2";
 
+  /**
+   * For producing the passive motion results.
+   */
+  private PassiveMotionAlgorithm algorithm;;
+
+  /**
+   * For displaying results to the user in realtime (optional).
+   */
   protected UserInterfaceAdapter userInterface = null;
 
-  protected String regionImageUri = null;
+  /**
+   * URL of the region image.
+   */
+  protected String regionImageUrl = null;
 
+  /**
+   * Image of the region (for the GUI).
+   */
   protected BufferedImage regionImage = null;
 
+  /**
+   * Connection to the world model as a solver.
+   */
+  protected final SolverWorldConnection solverWM = new SolverWorldConnection();
+
+  /**
+   * Connection to the world model as a client.
+   */
+  protected final ClientWorldConnection clientWM = new ClientWorldConnection();
+
+  /**
+   * Accepts 4 required parameters and launches a new solver thread.
+   * 
+   * @param args
+   *          world model host, solver port, client port, region name, algorithm
+   *          config.
+   */
   public static void main(String[] args) {
-    if (args.length < 4) {
+
+    if (args.length < 5) {
       printUsageInfo();
       return;
     }
 
-    PassiveMotionSolver solver = new PassiveMotionSolver(args[0],
-        Integer.valueOf(args[1]), Integer.valueOf(args[2]), args[3]);
+    XStream xstream = new XStream();
 
-    if (args.length > 6) {
-      for (int i = 6; i < args.length; ++i) {
+    AlgorithmConfig config = (AlgorithmConfig) xstream
+        .fromXML(new File(args[4]));
+
+    PassiveMotionSolver solver = new PassiveMotionSolver(args[0],
+        Integer.parseInt(args[1]), Integer.parseInt(args[2]), args[3], config);
+
+    if (args.length > 4) {
+      for (int i = 4; i < args.length; ++i) {
         if (args[i].equals("--gui")) {
           solver.setUserInterface(new GraphicalUserInterface());
         }
@@ -80,28 +126,26 @@ public class PassiveMotionSolver extends Thread {
   }
 
   public PassiveMotionSolver(String wmHost, int solverPort, int clientPort,
-      String region) {
+      String region, AlgorithmConfig config) {
 
-    // Configure the distributor
+    this.solverWM.setHost(wmHost);
+    this.solverWM.setPort(solverPort);
+    AttributeSpecification spec = new AttributeSpecification();
+    spec.setAttributeName(GENERATED_ATTRIBUTE_NAME);
+    spec.setIsOnDemand(false);
+    this.solverWM.addAttribute(spec);
 
-    // Configure the World Server
+    this.clientWM.setHost(wmHost);
+    this.clientWM.setPort(clientPort);
 
     // Configure the fingerprinter
     StdDevFingerprintGenerator fingerprinter = new StdDevFingerprintGenerator();
     fingerprinter.setMaxNumSamples(3);
     fingerprinter.setMaxSampleAge(5000l);
-    this.algorithm.setStdDevFingerprinter(fingerprinter);
 
-    // Configure the algorithm
-    this.algorithm.setLineLengthPower(1.1f);
-    this.algorithm.setDesiredTileHeight(20f);
-    this.algorithm.setDesiredTileWidth(20f);
-    // this.algorithm.setNumXTiles(20);
-    // this.algorithm.setNumYTiles(20);
-    this.algorithm.setRadiusThreshold(90f);
-    this.algorithm.setStdDevNoiseThreshold(1.2f);
-    this.algorithm.setTileScoreThreshold(.50f);
-    this.algorithm.setRegionUri("winlab");
+    this.algorithm = new PassiveMotionAlgorithm(config);
+    this.algorithm.setStdDevFingerprinter(fingerprinter);
+    this.algorithm.setRegionUri(region);
   }
 
   public void run() {
@@ -159,22 +203,22 @@ public class PassiveMotionSolver extends Thread {
   public void setRegionImageUri(String regionImageUri) {
     if (this.userInterface == null)
       return;
-    this.regionImageUri = regionImageUri;
+    this.regionImageUrl = regionImageUri;
 
-    if (this.regionImageUri.indexOf("http://") == -1) {
-      this.regionImageUri = "http://" + this.regionImageUri;
+    if (this.regionImageUrl.indexOf("http://") == -1) {
+      this.regionImageUrl = "http://" + this.regionImageUrl;
     }
 
     try {
-      BufferedImage origImage = ImageIO.read(new URL(this.regionImageUri));
+      BufferedImage origImage = ImageIO.read(new URL(this.regionImageUrl));
       BufferedImage invert = PassiveMotionSolver.negative(origImage);
       this.userInterface.setBackground(invert);
 
     } catch (MalformedURLException e) {
-      log.warn("Invalid region URI: {}", this.regionImageUri);
+      log.warn("Invalid region URI: {}", this.regionImageUrl);
       e.printStackTrace();
     } catch (IOException e) {
-      log.warn("Could not load region URI at {}.", this.regionImageUri);
+      log.warn("Could not load region URI at {}.", this.regionImageUrl);
       e.printStackTrace();
     }
 
@@ -182,7 +226,7 @@ public class PassiveMotionSolver extends Thread {
 
   public static void printUsageInfo() {
     System.out
-        .println("One or more parameters is missing or invalid: <world model host> <solver port> <client port> <region name>");
+        .println("Usage: <world model host> <solver port> <client port> <region name> [--gui]");
   }
 
   public void startConnections() {

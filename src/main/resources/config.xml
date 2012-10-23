@@ -1,0 +1,8 @@
+<com.owlplatform.solver.passivemotion.AlgorithmConfig>
+  <tileScoreThreshold>0.5</tileScoreThreshold>
+  <stdDevNoiseThreshold>1.2</stdDevNoiseThreshold>
+  <radiusThreshold>90.0</radiusThreshold>
+  <lineLengthPower>1.1</lineLengthPower>
+  <desiredTileWidth>20.0</desiredTileWidth>
+  <desiredTileHeight>20.0</desiredTileHeight>
+</com.owlplatform.solver.passivemotion.AlgorithmConfig>

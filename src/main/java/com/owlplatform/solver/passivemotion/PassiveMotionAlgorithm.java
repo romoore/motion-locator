@@ -53,9 +53,7 @@ public class PassiveMotionAlgorithm {
 
 	protected int numYTiles;
 
-	protected float desiredTileWidth = -1f;
-
-	protected float desiredTileHeight = -1f;
+	protected AlgorithmConfig config;
 
 	protected ConcurrentHashMap<HashableByteArray, Receiver> receivers = new ConcurrentHashMap<HashableByteArray, Receiver>();
 
@@ -63,18 +61,13 @@ public class PassiveMotionAlgorithm {
 
 	protected ScoredTile[] tiles;
 
-	protected float tileScoreThreshold;
 
-	protected float stdDevNoiseThreshold;
-
-	protected float radiusThreshold;
-
-	protected float lineLengthPower;
 
 	protected StdDevFingerprintGenerator stdDevFingerprinter;
 
-	public PassiveMotionAlgorithm() {
+	public PassiveMotionAlgorithm(AlgorithmConfig config) {
 		super();
+		this.config = config;
 	}
 
 	public void addSample(SampleMessage sample) {
@@ -138,29 +131,7 @@ public class PassiveMotionAlgorithm {
 		this.tiles = tiles;
 	}
 
-	public float getTileScoreThreshold() {
-		return tileScoreThreshold;
-	}
-
-	public void setTileScoreThreshold(float tileScoreThreshold) {
-		this.tileScoreThreshold = tileScoreThreshold;
-	}
-
-	public float getStdDevNoiseThreshold() {
-		return stdDevNoiseThreshold;
-	}
-
-	public void setStdDevNoiseThreshold(float stdDevNoiseThreshold) {
-		this.stdDevNoiseThreshold = stdDevNoiseThreshold;
-	}
-
-	public float getRadiusThreshold() {
-		return radiusThreshold;
-	}
-
-	public void setRadiusThreshold(float radiusThreshold) {
-		this.radiusThreshold = radiusThreshold;
-	}
+	
 
 	public void addReceiver(Receiver receiver) {
 		HashableByteArray hash = new HashableByteArray(receiver.getDeviceId());
@@ -180,14 +151,14 @@ public class PassiveMotionAlgorithm {
 			return null;
 		}
 
-		if (this.desiredTileWidth > 0) {
+		if (this.config.desiredTileWidth > 0) {
 			this.numXTiles = (int) Math.ceil(this.regionXMax
-					/ this.desiredTileWidth);
+					/ this.config.desiredTileWidth);
 			this.numXTiles += (this.numXTiles - 1);
 		}
-		if (this.desiredTileHeight > 0) {
+		if (this.config.desiredTileHeight > 0) {
 			this.numYTiles = (int) Math.ceil(this.regionYMax
-					/ this.desiredTileWidth);
+					/ this.config.desiredTileWidth);
 			this.numYTiles += (this.numYTiles - 1);
 		}
 
@@ -498,13 +469,13 @@ public class PassiveMotionAlgorithm {
 							+ theTile.width / 2, theTile.y + theTile.height / 2);
 					// Check P1 distance (receiver)
 					if (Math.sqrt(Math.pow(tileCenter.x - line.getLine().x1, 2)
-							+ Math.pow(tileCenter.y - line.getLine().y1, 2)) > this.radiusThreshold) {
+							+ Math.pow(tileCenter.y - line.getLine().y1, 2)) > this.config.radiusThreshold) {
 						continue;
 					}
 
 					// Check P2 distance (transmitter)
 					if (Math.sqrt(Math.pow(tileCenter.x - line.getLine().x2, 2)
-							+ Math.pow(tileCenter.y - line.getLine().y2, 2)) > this.radiusThreshold) {
+							+ Math.pow(tileCenter.y - line.getLine().y2, 2)) > this.config.radiusThreshold) {
 						continue;
 					}
 
@@ -521,9 +492,9 @@ public class PassiveMotionAlgorithm {
 											2));
 
 					float numerator = line.getValue()
-							- this.stdDevNoiseThreshold;
+							- this.config.stdDevNoiseThreshold;
 					allTiles[x][y].score += (float) (numerator / (Math.pow(
-							lineLength, this.lineLengthPower)));
+							lineLength, this.config.lineLengthPower)));
 
 				}
 
@@ -531,7 +502,7 @@ public class PassiveMotionAlgorithm {
 				// (allTiles[x][y].tile.height*allTiles[x][y].tile.width);
 
 				// Make sure the tile score is above the threshold
-				if (allTiles[x][y].getScore() <= this.tileScoreThreshold) {
+				if (allTiles[x][y].getScore() <= this.config.tileScoreThreshold) {
 					// log.debug("{} score is below threshold {}.  Skipping...",allTiles[x][y],this.tileScoreThreshold);
 					allTiles[x][y].setScore(0f);
 					continue;
@@ -580,7 +551,7 @@ public class PassiveMotionAlgorithm {
 											.getDeviceId()));
 					continue;
 				}
-				if (value.floatValue() <= this.stdDevNoiseThreshold) {
+				if (value.floatValue() <= this.config.stdDevNoiseThreshold) {
 					continue;
 				}
 				Line2D.Float theLine = new Line2D.Float();
@@ -666,13 +637,13 @@ public class PassiveMotionAlgorithm {
 			for (int x = 0; x < allTiles.length; ++x) {
 				char motionSymbol = MOTION_SYMBOLS[0];
 				float score = allTiles[x][y].getScore();
-				if (score > 2f * this.tileScoreThreshold) {
+				if (score > 2f * this.config.tileScoreThreshold) {
 					motionSymbol = MOTION_SYMBOLS[4];
-				} else if (score > 1.66f * this.tileScoreThreshold) {
+				} else if (score > 1.66f * this.config.tileScoreThreshold) {
 					motionSymbol = MOTION_SYMBOLS[3];
-				} else if (score > 1.33f * this.tileScoreThreshold) {
+				} else if (score > 1.33f * this.config.tileScoreThreshold) {
 					motionSymbol = MOTION_SYMBOLS[2];
-				} else if (score > this.tileScoreThreshold) {
+				} else if (score > this.config.tileScoreThreshold) {
 					motionSymbol = MOTION_SYMBOLS[1];
 				}
 				sb.append(motionSymbol).append(motionSymbol);
@@ -691,29 +662,5 @@ public class PassiveMotionAlgorithm {
 		sb.append("+\n");
 		sb.append(String.format(" %4.2f\n", allTiles[0][0].getTile().width));
 		return sb.toString();
-	}
-
-	public float getLineLengthPower() {
-		return lineLengthPower;
-	}
-
-	public void setLineLengthPower(float lineLengthPower) {
-		this.lineLengthPower = lineLengthPower;
-	}
-
-	public float getDesiredTileWidth() {
-		return desiredTileWidth;
-	}
-
-	public void setDesiredTileWidth(float desiredTileWidth) {
-		this.desiredTileWidth = desiredTileWidth;
-	}
-
-	public float getDesiredTileHeight() {
-		return desiredTileHeight;
-	}
-
-	public void setDesiredTileHeight(float desiredTileHeight) {
-		this.desiredTileHeight = desiredTileHeight;
 	}
 }
