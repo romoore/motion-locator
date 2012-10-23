@@ -133,12 +133,6 @@
 		</dependency>
 		<dependency>
 			<groupId>com.owlplatform</groupId>
-			<artifactId>owl-solver</artifactId>
-			<version>1.0.3</version>
-			<type>jar</type>
-		</dependency>
-		<dependency>
-			<groupId>com.owlplatform</groupId>
 			<artifactId>owl-worldmodel</artifactId>
 			<version>1.0.3</version>
 			<type>jar</type>

@@ -35,13 +35,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.owlplatform.common.SampleMessage;
-import com.owlplatform.solver.SolverAggregatorInterface;
-import com.owlplatform.solver.listeners.ConnectionListener;
-import com.owlplatform.solver.listeners.SampleListener;
 import com.owlplatform.solver.passivemotion.gui.panels.GraphicalUserInterface;
 import com.owlplatform.solver.passivemotion.gui.panels.UserInterfaceAdapter;
-import com.owlplatform.solver.protocol.messages.SubscriptionMessage;
-import com.owlplatform.solver.rules.SubscriptionRequestRule;
 import com.owlplatform.worldmodel.Attribute;
 import com.owlplatform.worldmodel.client.ClientWorldModelInterface;
 import com.owlplatform.worldmodel.client.listeners.DataListener;
@@ -59,20 +54,18 @@ import com.owlplatform.worldmodel.solver.protocol.messages.StartOnDemandMessage;
 import com.owlplatform.worldmodel.solver.protocol.messages.StopOnDemandMessage;
 import com.owlplatform.worldmodel.types.DataConverter;
 
-public class PassiveMotionSolver extends Thread implements SampleListener,
-    ConnectionListener,
-    com.owlplatform.worldmodel.solver.listeners.ConnectionListener,
+public class PassiveMotionSolver extends Thread implements
+
+com.owlplatform.worldmodel.solver.listeners.ConnectionListener,
     com.owlplatform.worldmodel.client.listeners.ConnectionListener,
     DataListener, com.owlplatform.worldmodel.solver.listeners.DataListener {
   private static final Logger log = LoggerFactory
       .getLogger(PassiveMotionSolver.class);
 
-  public static final String SOLUTION_URI_NAME = "passive motion.tile";
+  public static final String GENERATED_ATTRIBUTE_NAME = "passive motion.tile";
   public static final String SOLVER_ORIGIN_STRING = "java.solver.passive_motion.v1";
 
   private SolverWorldModelInterface solverWMI;
-
-  private SolverAggregatorInterface aggregator;
 
   private ClientWorldModelInterface clientWMI;
 
@@ -110,13 +103,6 @@ public class PassiveMotionSolver extends Thread implements SampleListener,
   public PassiveMotionSolver(String aggHost, int aggPort, String distHost,
       int distPort, String worldHost, int worldPort) {
 
-    // Configure the aggregator
-    this.aggregator = new SolverAggregatorInterface();
-    this.aggregator.setHost(aggHost);
-    this.aggregator.setPort(aggPort);
-    this.aggregator.addSampleListener(this);
-    this.aggregator.addConnectionListener(this);
-
     // Configure the distributor
     this.solverWMI = new SolverWorldModelInterface();
     this.solverWMI.setHost(distHost);
@@ -151,23 +137,11 @@ public class PassiveMotionSolver extends Thread implements SampleListener,
   }
 
   public void run() {
-    // Request as many samples as possible
-    SubscriptionRequestRule allTxersRule = SubscriptionRequestRule
-        .generateGenericRule();
-    allTxersRule.setPhysicalLayer((byte) 1);
-    allTxersRule.setUpdateInterval(0l);
-    this.aggregator.setRules(new SubscriptionRequestRule[] { allTxersRule });
-
-    // Aggregator connection parameters
-    this.aggregator.setConnectionRetryDelay(10000l);
-    this.aggregator.setConnectionTimeout(10000l);
-    this.aggregator.setStayConnected(true);
-    this.aggregator.setDisconnectOnException(true);
 
     // Tell the distributor the name of this solver's solution
     AttributeSpecification spec = new AttributeSpecification();
     spec.setIsOnDemand(false);
-    spec.setAttributeName(SOLUTION_URI_NAME);
+    spec.setAttributeName(GENERATED_ATTRIBUTE_NAME);
     this.solverWMI.addAttribute(spec);
 
     // Distributor connection parameters
@@ -211,7 +185,7 @@ public class PassiveMotionSolver extends Thread implements SampleListener,
           Attribute solution = new Attribute();
           solution.setData(solutionBytes.array());
           solution.setId(this.algorithm.getRegionUri());
-          solution.setAttributeName(SOLUTION_URI_NAME);
+          solution.setAttributeName(GENERATED_ATTRIBUTE_NAME);
 
           ArrayList<Attribute> solutions = new ArrayList<Attribute>();
 
@@ -260,11 +234,7 @@ public class PassiveMotionSolver extends Thread implements SampleListener,
 
   public void startConnections() {
 
-    if (!this.aggregator.doConnectionSetup()) {
-      log.error("Could not establish connection to the aggregator at {}:{}.",
-          this.aggregator.getHost(), this.aggregator.getPort());
-      System.exit(1);
-    }
+   
     if (!this.solverWMI.connect(10000l)) {
       log.error("Could not establish connection to the distributor at {}:{}.",
           this.solverWMI.getHost(), this.solverWMI.getPort());
@@ -276,11 +246,6 @@ public class PassiveMotionSolver extends Thread implements SampleListener,
       System.exit(1);
     }
 
-  }
-
-  public void sampleReceived(SolverAggregatorInterface aggregator,
-      SampleMessage sample) {
-    this.algorithm.addSample(sample);
   }
 
   /**
@@ -314,23 +279,6 @@ public class PassiveMotionSolver extends Thread implements SampleListener,
       }
     }
     return img;
-  }
-
-  public void connectionEnded(SolverAggregatorInterface aggregator) {
-    log.error("Connection to {} has ended.  Exiting solver.", aggregator);
-    this.solverWMI.disconnect();
-    this.clientWMI.disconnect();
-    System.exit(1);
-  }
-
-  public void connectionEstablished(SolverAggregatorInterface aggregator) {
-    // TODO Auto-generated method stub
-
-  }
-
-  public void connectionInterrupted(SolverAggregatorInterface aggregator) {
-    // TODO Auto-generated method stub
-
   }
 
   public UserInterfaceAdapter getUserInterface() {
@@ -529,7 +477,7 @@ public class PassiveMotionSolver extends Thread implements SampleListener,
   @Override
   public void connectionEnded(SolverWorldModelInterface worldModel) {
     log.error("Connection to {} has ended.  Exiting solver.", worldModel);
-    this.aggregator.disconnect();
+    
     this.clientWMI.disconnect();
     System.exit(1);
   }
@@ -571,7 +519,7 @@ public class PassiveMotionSolver extends Thread implements SampleListener,
   @Override
   public void connectionEnded(ClientWorldModelInterface worldModel) {
     log.error("Connection to {} has ended.  Exiting solver.", worldModel);
-    this.aggregator.disconnect();
+  
     this.solverWMI.disconnect();
     System.exit(1);
   }
@@ -587,13 +535,6 @@ public class PassiveMotionSolver extends Thread implements SampleListener,
   @Override
   public void originPreferenceSent(ClientWorldModelInterface worldModel,
       OriginPreferenceMessage message) {
-    // TODO Auto-generated method stub
-
-  }
-
-  @Override
-  public void subscriptionReceived(SolverAggregatorInterface aggregator,
-      SubscriptionMessage response) {
     // TODO Auto-generated method stub
 
   }
