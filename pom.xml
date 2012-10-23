@@ -1,12 +1,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>org.grailrtls</groupId>
+	<groupId>com.owlplatform</groupId>
 	<artifactId>motion-locator</artifactId>
   <version>1.0.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>Device-Free Motion Solver</name>
-  <description>Solver for the Make Sense Platform/GRAIL project to predict the
+  <description>Solver for the Owl Platform/GRAIL project to predict the
   location of motion.</description>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -18,14 +18,34 @@
 			<url>http://www.gnu.org/licenses/gpl-2.0-standalone.html</url>
 			<distribution>manual</distribution>
 		</license>
-	</licenses>
+  </licenses>
+  <url>http://romoore.github.com/motion-locator</url>
+  <scm>
+    <url>git@github.com:romoore/motion-locator.git</url>
+    <connection>scm:git:git@github.com:romoore/motion-locator.git</connection>
+    <developerConnection>scm:git:git@github.com:romoore/motion-locator.git</developerConnection>
+  </scm>
 
-	<build>
+  <distributionManagement>
+    <repository>
+      <id>localhost</id>
+      <url>file:${project.build.directory}/release/</url>
+    </repository>
+  </distributionManagement>
+
+  <build>
+    <extensions>
+      <extension>
+        <groupId>org.apache.maven.wagon</groupId>
+        <artifactId>wagon-file</artifactId>
+        <version>2.2</version>
+      </extension>
+    </extensions>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-checkstyle-plugin</artifactId>
-				<version>2.6</version>
+				<version>2.9.1</version>
 				<configuration>
 					<enableRulesSummary>false</enableRulesSummary>
 				</configuration>
@@ -33,7 +53,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>2.0.2</version>
+				<version>2.5.1</version>
 				<configuration>
 					<source>1.6</source>
 					<target>1.6</target>
@@ -55,7 +75,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
-				<version>2.2</version>
+				<version>2.3</version>
 				<configuration>
 					<descriptorRefs>
 						<descriptorRef>jar-with-dependencies</descriptorRef>
@@ -89,64 +109,45 @@
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.8.2</version>
+			<version>4.10</version>
 			<scope>test</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-			<version>1.6.1</version>
+			<version>1.7.2</version>
 			<type>jar</type>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-log4j12</artifactId>
-			<version>1.6.1</version>
+			<version>1.7.2</version>
 			<type>jar</type>
 		</dependency>
 		<dependency>
 			<groupId>log4j</groupId>
 			<artifactId>log4j</artifactId>
-			<version>1.2.16</version>
+			<version>1.2.17</version>
 			<type>jar</type>
 		</dependency>
-
 		<dependency>
-			<groupId>org.apache.mina</groupId>
-			<artifactId>mina-core</artifactId>
-			<version>2.0.4</version>
-			<type>bundle</type>
-		</dependency>
-
-		<dependency>
-			<groupId>org.grailrtls</groupId>
-			<artifactId>libsolver</artifactId>
-			<version>3.0.3</version>
+			<groupId>com.owlplatform</groupId>
+			<artifactId>owl-solver</artifactId>
+			<version>1.0.3</version>
 			<type>jar</type>
 		</dependency>
-
 		<dependency>
-			<groupId>org.grailrtls</groupId>
-			<artifactId>libworldmodel</artifactId>
-			<version>3.0.3</version>
+			<groupId>com.owlplatform</groupId>
+			<artifactId>owl-worldmodel</artifactId>
+			<version>1.0.3</version>
 			<type>jar</type>
 		</dependency>
-		
 		<dependency>
-			<groupId>org.grailrtls</groupId>
-			<artifactId>libcommon</artifactId>
-			<version>3.0.3</version>
+			<groupId>com.owlplatform</groupId>
+			<artifactId>owl-common</artifactId>
+			<version>1.0.3</version>
 			<type>jar</type>
 		</dependency>
 	</dependencies>
-  <repositories>
-    <repository>
-      <id>grailrtls.sf.net</id>
-      <url>http://grailrtls.sourceforge.net/repo</url>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-  </repositories>
 </project>
