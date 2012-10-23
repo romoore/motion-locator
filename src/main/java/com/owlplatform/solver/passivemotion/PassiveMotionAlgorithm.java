@@ -270,7 +270,7 @@ public class PassiveMotionAlgorithm {
 
 		resultSet.setTilesToPublish(publishedTiles);
 
-		log.info(this.printFancyMap(baseRaw));
+		log.info(this.printFancyMap(microk3x3c));
 		
 		return resultSet;
 

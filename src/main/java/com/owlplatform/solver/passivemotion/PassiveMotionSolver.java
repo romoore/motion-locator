@@ -648,7 +648,7 @@ public class PassiveMotionSolver extends Thread {
 
   public static void printUsageInfo() {
     System.out
-        .println("Usage: <world model host> <solver port> <client port> <region name> [--gui]");
+        .println("Usage: <world model host> <solver port> <client port> <region name> <algorithm config> [--gui]");
   }
 
   /**
