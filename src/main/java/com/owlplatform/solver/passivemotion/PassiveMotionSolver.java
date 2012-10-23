@@ -34,24 +34,14 @@ import javax.imageio.ImageIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.owlplatform.common.SampleMessage;
 import com.owlplatform.solver.passivemotion.gui.panels.GraphicalUserInterface;
 import com.owlplatform.solver.passivemotion.gui.panels.UserInterfaceAdapter;
 import com.owlplatform.worldmodel.Attribute;
 import com.owlplatform.worldmodel.client.ClientWorldModelInterface;
-import com.owlplatform.worldmodel.client.listeners.DataListener;
-import com.owlplatform.worldmodel.client.protocol.messages.AbstractRequestMessage;
-import com.owlplatform.worldmodel.client.protocol.messages.AttributeAliasMessage;
 import com.owlplatform.worldmodel.client.protocol.messages.DataResponseMessage;
 import com.owlplatform.worldmodel.client.protocol.messages.IdSearchResponseMessage;
-import com.owlplatform.worldmodel.client.protocol.messages.OriginAliasMessage;
-import com.owlplatform.worldmodel.client.protocol.messages.OriginPreferenceMessage;
 import com.owlplatform.worldmodel.client.protocol.messages.SnapshotRequestMessage;
-import com.owlplatform.worldmodel.solver.SolverWorldModelInterface;
-import com.owlplatform.worldmodel.solver.protocol.messages.AttributeAnnounceMessage;
 import com.owlplatform.worldmodel.solver.protocol.messages.AttributeAnnounceMessage.AttributeSpecification;
-import com.owlplatform.worldmodel.solver.protocol.messages.StartOnDemandMessage;
-import com.owlplatform.worldmodel.solver.protocol.messages.StopOnDemandMessage;
 import com.owlplatform.worldmodel.types.DataConverter;
 
 public class PassiveMotionSolver extends Thread {
@@ -63,8 +53,6 @@ public class PassiveMotionSolver extends Thread {
 
   private PassiveMotionAlgorithm algorithm = new PassiveMotionAlgorithm();
 
-  private boolean canSendSolutions = false;
-
   protected UserInterfaceAdapter userInterface = null;
 
   protected String regionImageUri = null;
@@ -72,14 +60,13 @@ public class PassiveMotionSolver extends Thread {
   protected BufferedImage regionImage = null;
 
   public static void main(String[] args) {
-    if (args.length < 6) {
+    if (args.length < 4) {
       printUsageInfo();
       return;
     }
 
     PassiveMotionSolver solver = new PassiveMotionSolver(args[0],
-        Integer.valueOf(args[1]), args[2], Integer.valueOf(args[3]), args[4],
-        Integer.valueOf(args[5]));
+        Integer.valueOf(args[1]), Integer.valueOf(args[2]), args[3]);
 
     if (args.length > 6) {
       for (int i = 6; i < args.length; ++i) {
@@ -92,14 +79,12 @@ public class PassiveMotionSolver extends Thread {
     solver.start();
   }
 
-  public PassiveMotionSolver(String aggHost, int aggPort, String distHost,
-      int distPort, String worldHost, int worldPort) {
+  public PassiveMotionSolver(String wmHost, int solverPort, int clientPort,
+      String region) {
 
     // Configure the distributor
-   
 
     // Configure the World Server
-    
 
     // Configure the fingerprinter
     StdDevFingerprintGenerator fingerprinter = new StdDevFingerprintGenerator();
@@ -125,7 +110,7 @@ public class PassiveMotionSolver extends Thread {
     AttributeSpecification spec = new AttributeSpecification();
     spec.setIsOnDemand(false);
     spec.setAttributeName(GENERATED_ATTRIBUTE_NAME);
-  
+
     // Connect to aggregator, distributor, and world server
     this.startConnections();
 
@@ -197,12 +182,11 @@ public class PassiveMotionSolver extends Thread {
 
   public static void printUsageInfo() {
     System.out
-        .println("One or more parameters is missing or invalid: <aggregator host> <aggregator port> <distributor host> <distributor port> <world server host> <world server port>");
+        .println("One or more parameters is missing or invalid: <world model host> <solver port> <client port> <region name>");
   }
 
   public void startConnections() {
 
-   
     // TODO: World Model connections
 
   }
@@ -247,8 +231,6 @@ public class PassiveMotionSolver extends Thread {
   public void setUserInterface(UserInterfaceAdapter userInterface) {
     this.userInterface = userInterface;
   }
-
-  
 
   // FIXME: Got a response from the world model, parse it!
   public void dataResponseReceived(ClientWorldModelInterface worldModel,
@@ -406,9 +388,5 @@ public class PassiveMotionSolver extends Thread {
       // TODO: Get a streaming request for transmitter/receiver locations
     }
   }
-
- 
-
- 
 
 }
