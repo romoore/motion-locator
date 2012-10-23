@@ -72,6 +72,7 @@ public class StdDevFingerprintGenerator {
     }
 
     varianceByTxer.put(transmitter, Float.valueOf(variance));
+
   }
 
   public Fingerprint generateFingerprint(String receiverId) {

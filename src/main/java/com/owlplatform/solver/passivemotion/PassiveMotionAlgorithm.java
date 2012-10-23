@@ -72,10 +72,11 @@ public class PassiveMotionAlgorithm {
 
 	
 	public void addVariance(final String receiver, final String transmitter, final float variance, final long timestamp){
+	 
 	  this.stdDevFingerprinter.addVariance(transmitter, receiver, variance, timestamp);
 	}
 
-	public String getRegionUri() {
+	public String getRegionId() {
 		return regionUri;
 	}
 
@@ -269,6 +270,8 @@ public class PassiveMotionAlgorithm {
 
 		resultSet.setTilesToPublish(publishedTiles);
 
+		log.info(this.printFancyMap(baseRaw));
+		
 		return resultSet;
 
 	}
@@ -513,29 +516,29 @@ public class PassiveMotionAlgorithm {
 
 		for (Fingerprint fingerprint : fingerprints) {
 		  // FIXME: What the hell is this? Left over from old code, but is it receiver or transmitter?
-			Transmitter transmitter = this.transmitters.get(fingerprint.getReceiverId());
-			if (transmitter == null) {
-				log.debug("Unknown transmitter {}. Skipping...", fingerprint.getReceiverId());
+			Receiver receiver = this.receivers.get(fingerprint.getReceiverId());
+			if (receiver  == null) {
+				log.debug("Unknown receiver {}. Skipping...", fingerprint.getReceiverId());
 				continue;
 			}
 
-			for (String receiverId : fingerprint.getRssiValues()
+			for (String transmitterId : fingerprint.getRssiValues()
 					.keySet()) {
 				RSSILine line = new RSSILine();
-				Receiver receiver = this.receivers.get(receiverId);
-				if (receiver == null) {
-					log.warn("Unknown receiver {}. Skipping...", receiverId);
+				Transmitter transmitter = this.transmitters.get(transmitterId);
+				if (transmitter == null) {
+					log.warn("Unknown transmitter {}. Skipping...", transmitterId);
 					continue;
 				}
 
-				Float value = fingerprint.getRssiValues().get(receiverId);
+				Float value = fingerprint.getRssiValues().get(transmitterId);
 				if (value == null) {
 					log
 							.warn(
 									"Missing Std. Dev. Value for Tx: {}, Rx: {}. Skipping...",
 									fingerprint
 											.getReceiverId(),
-									receiver
+									transmitter
 											.getDeviceId());
 					continue;
 				}
@@ -562,13 +565,13 @@ public class PassiveMotionAlgorithm {
 
 	protected ArrayList<Fingerprint> calculateFingerprints() {
 		ArrayList<Fingerprint> fingerprints = new ArrayList<Fingerprint>();
-		for (Transmitter transmitter : this.transmitters.values()) {
+		for (Receiver receiver : this.receivers.values()) {
 			Fingerprint fingerprint = this.stdDevFingerprinter
-					.generateFingerprint(transmitter.getDeviceId());
+					.generateFingerprint(receiver.getDeviceId());
 			if (fingerprint != null) {
 				fingerprints.add(fingerprint);
 			} else {
-				log.warn("{} cannot be heard.", transmitter);
+				log.warn("{} cannot be heard.", receiver);
 			}
 		}
 
@@ -656,7 +659,6 @@ public class PassiveMotionAlgorithm {
   public StdDevFingerprintGenerator getStdDevFingerprinter() {
     return stdDevFingerprinter;
   }
-
 
   public void setStdDevFingerprinter(
       StdDevFingerprintGenerator stdDevFingerprinter) {

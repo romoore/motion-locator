@@ -40,7 +40,13 @@
 	  <level value="debug" />
 	  <appender-ref="console" />
 	</logger>
-	 -->
+   -->
+   <logger name="com.owlplatform.worldmodel">
+    <level value="info" />
+  </logger>
+  <logger name="org.apache">
+    <level value="warn" />
+  </logger>
 
 	<root>
 		<priority value="debug" />

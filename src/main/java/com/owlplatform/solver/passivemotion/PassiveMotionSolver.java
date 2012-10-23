@@ -21,11 +21,15 @@ package com.owlplatform.solver.passivemotion;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,6 +44,7 @@ import com.owlplatform.solver.passivemotion.gui.panels.UserInterfaceAdapter;
 import com.owlplatform.worldmodel.Attribute;
 import com.owlplatform.worldmodel.client.ClientWorldConnection;
 import com.owlplatform.worldmodel.client.ClientWorldModelInterface;
+import com.owlplatform.worldmodel.client.Response;
 import com.owlplatform.worldmodel.client.StepResponse;
 import com.owlplatform.worldmodel.client.WorldState;
 import com.owlplatform.worldmodel.client.protocol.messages.DataResponseMessage;
@@ -47,6 +52,7 @@ import com.owlplatform.worldmodel.client.protocol.messages.IdSearchResponseMessa
 import com.owlplatform.worldmodel.client.protocol.messages.SnapshotRequestMessage;
 import com.owlplatform.worldmodel.solver.SolverWorldConnection;
 import com.owlplatform.worldmodel.solver.protocol.messages.AttributeAnnounceMessage.AttributeSpecification;
+import com.owlplatform.worldmodel.types.ByteArrayConverter;
 import com.owlplatform.worldmodel.types.DataConverter;
 import com.owlplatform.worldmodel.types.DoubleConverter;
 import com.owlplatform.worldmodel.types.StringConverter;
@@ -54,37 +60,38 @@ import com.thoughtworks.xstream.XStream;
 
 public class PassiveMotionSolver extends Thread {
   private static final class VarianceHandler extends Thread {
-  
+
     private final PassiveMotionSolver handler;
     private boolean keepRunning = true;
-  
+
     public VarianceHandler(final PassiveMotionSolver handler) {
       this.handler = handler;
     }
-  
+
     @Override
     public void run() {
       main: while (this.keepRunning) {
         log.info("Requesting RSSI variance values.");
         if (this.handler.clientWM == null) {
           log.info("Variance Handler exiting.");
-  
+
           break;
         }
-        final StepResponse rssiResponse = this.handler.clientWM.getStreamRequest(
-            ".*", System.currentTimeMillis(), 0, "link variance");
-  
+        final StepResponse rssiResponse = this.handler.clientWM
+            .getStreamRequest(".*", System.currentTimeMillis(), 0,
+                "link variance");
+
         WorldState state = null;
         while (!rssiResponse.isComplete() && !rssiResponse.isError()
             && this.keepRunning) {
           try {
             state = rssiResponse.next();
-  
+
             if (state == null) {
               break;
             }
             for (String uri : state.getIdentifiers()) {
-  
+
               int txSensStart = uri.indexOf('.');
               int rxSensStart = uri.lastIndexOf('.');
               String txerSensor = uri.substring(txSensStart + 1, rxSensStart);
@@ -94,8 +101,7 @@ public class PassiveMotionSolver extends Thread {
                 continue;
               }
               Attribute linkAvg = attribs.iterator().next();
-              double value = DoubleConverter.get()
-                  .decode(linkAvg.getData());
+              double value = DoubleConverter.get().decode(linkAvg.getData());
               if (this.handler.algorithm != null) {
                 this.handler.algorithm.addVariance(rxerSensor, txerSensor,
                     (float) value, linkAvg.getCreationDate());
@@ -109,7 +115,159 @@ public class PassiveMotionSolver extends Thread {
         rssiResponse.cancel();
       }
     }
-  
+
+    public void shutdown() {
+      this.keepRunning = false;
+    }
+  }
+
+  private static final class DeviceHandler extends Thread {
+
+    private final PassiveMotionSolver handler;
+    private boolean keepRunning = true;
+
+    public DeviceHandler(final PassiveMotionSolver handler) {
+      this.handler = handler;
+    }
+
+    @Override
+    public void run() {
+      main: while (this.keepRunning) {
+        log.info("Requesting locations.");
+        if (this.handler.clientWM == null) {
+          log.info("Device Handler exiting.");
+
+          break;
+        }
+
+        final StepResponse rssiResponse = this.handler.clientWM
+            .getStreamRequest(
+                "(region\\." + this.handler.algorithm.getRegionId() + "|"
+                    + this.handler.algorithm.getRegionId() + ".*)",
+                System.currentTimeMillis(), 0, ".*");
+
+        WorldState state = null;
+        while (!rssiResponse.isComplete() && !rssiResponse.isError()
+            && this.keepRunning) {
+          try {
+            state = rssiResponse.next();
+
+            if (state == null) {
+              break;
+            }
+            for (String uri : state.getIdentifiers()) {
+
+              // Handle interesting regions
+              if (this.handler.algorithm.getRegionId().equals(uri)) {
+                Collection<Attribute> fields = state.getState(uri);
+                if (fields == null) {
+                  log.warn("No information about {} available.",
+                      this.handler.algorithm.getRegionId());
+                  return;
+                }
+
+                Dimension regionDimensions = new Dimension();
+                double width = 0.0;
+                double height = 0.0;
+                String mapURL = null;
+                for (Attribute field : fields) {
+                  if ("location.maxx".equals(field.getAttributeName())) {
+                    width = ((Double) DataConverter.decode(
+                        field.getAttributeName(), field.getData()));
+                    continue;
+                  } else if ("location.maxy".equals(field.getAttributeName())) {
+                    height = ((Double) DataConverter.decode(
+                        field.getAttributeName(), field.getData()));
+                    continue;
+                  } else if ("image.url".equals(field.getAttributeName())) {
+                    mapURL = (String) DataConverter.decode(
+                        field.getAttributeName(), field.getData());
+                    continue;
+                  }
+                }
+                regionDimensions.setSize(width, height);
+                this.handler.setRegionImageUri(mapURL);
+              }
+
+              // Check if this is a transmitter
+              if (uri.indexOf("transmitter") != -1) {
+                Transmitter txer = new Transmitter();
+                Collection<Attribute> fields = state.getState(uri);
+                if (fields == null) {
+                  log.warn("No fields available for {}.", uri);
+                  return;
+                }
+                for (Attribute field : fields) {
+                  // X-coordinate
+                  if ("location.x".equalsIgnoreCase(field.getAttributeName())) {
+                    Double xPos = (Double) DataConverter.decode(
+                        field.getAttributeName(), field.getData());
+                    txer.setxLocation(xPos.floatValue());
+                  } else if ("location.y".equalsIgnoreCase(field
+                      .getAttributeName())) {
+                    Double yPos = (Double) DataConverter.decode(
+                        field.getAttributeName(), field.getData());
+                    txer.setyLocation(yPos.floatValue());
+                  } else if ("id".equalsIgnoreCase(field.getAttributeName())) {
+                    Long id = (Long) DataConverter.decode(
+                        field.getAttributeName(), field.getData());
+                    // FIXME: Shouldn't hard-code, where do we consolidate the
+                    // device ID size?
+                    String deviceId = StringConverter.get()
+                        .decode(field.getData()).substring(1);
+
+                    txer.setDeviceId(deviceId);
+                  } else if ("region_uri".equalsIgnoreCase(field
+                      .getAttributeName())) {
+                    String region = (String) DataConverter.decode(
+                        field.getAttributeName(), field.getData());
+                    txer.setRegionUri(region);
+                  }
+                }
+                log.info("Added {} ", txer);
+                this.handler.algorithm.addTransmitter(txer);
+              } else if (uri.indexOf("receiver") != -1) {
+                Receiver rxer = new Receiver();
+
+                Collection<Attribute> fields = state.getState(uri);
+                if (fields == null) {
+                  log.warn("No fields available for {}.", uri);
+                  return;
+                }
+                for (Attribute field : fields) {
+                  // X-coordinate
+                  if ("location.x".equalsIgnoreCase(field.getAttributeName())) {
+                    Double xPos = DoubleConverter.get().decode(field.getData());
+                    rxer.setxLocation(xPos.floatValue());
+                  } else if ("location.y".equalsIgnoreCase(field
+                      .getAttributeName())) {
+                    Double yPos = DoubleConverter.get().decode(field.getData());
+                    rxer.setyLocation(yPos.floatValue());
+                  } else if ("id".equalsIgnoreCase(field.getAttributeName())) {
+                    String deviceId = StringConverter.get()
+                        .decode(field.getData()).substring(1);
+                    rxer.setDeviceId(deviceId);
+                  } else if ("region.uri".equalsIgnoreCase(field
+                      .getAttributeName())) {
+                    String region = StringConverter.get().decode(
+                        field.getData());
+                  }
+                }
+
+                log.info("Added {}", rxer);
+                this.handler.algorithm.addReceiver(rxer);
+              }
+
+            }
+          } catch (Exception e) {
+            e.printStackTrace();
+            continue main;
+          }
+        }
+        rssiResponse.cancel();
+      }
+    }
+
     public void shutdown() {
       this.keepRunning = false;
     }
@@ -136,7 +294,7 @@ public class PassiveMotionSolver extends Thread {
   /**
    * For producing the passive motion results.
    */
-  private PassiveMotionAlgorithm algorithm;;
+  PassiveMotionAlgorithm algorithm;;
 
   /**
    * For displaying results to the user in realtime (optional).
@@ -162,6 +320,16 @@ public class PassiveMotionSolver extends Thread {
    * Connection to the world model as a client.
    */
   protected final ClientWorldConnection clientWM = new ClientWorldConnection();
+
+  /**
+   * Handler for processing variance values.
+   */
+  protected VarianceHandler varianceHandler;
+
+  /**
+   * Handler for region, transmitters, and receivers.
+   */
+  protected DeviceHandler deviceHandler;
 
   /**
    * Accepts 4 required parameters and launches a new solver thread.
@@ -201,6 +369,7 @@ public class PassiveMotionSolver extends Thread {
 
     this.solverWM.setHost(wmHost);
     this.solverWM.setPort(solverPort);
+    this.solverWM.setOriginString(SOLVER_ORIGIN_STRING);
     AttributeSpecification spec = new AttributeSpecification();
     spec.setAttributeName(GENERATED_ATTRIBUTE_NAME);
     spec.setIsOnDemand(false);
@@ -227,6 +396,11 @@ public class PassiveMotionSolver extends Thread {
       return;
     }
 
+    this.retrieveRegionInfo(new String[] { "region."
+        + this.algorithm.getRegionId() });
+
+    this.retrieveAnchors(this.algorithm.getRegionId());
+
     if (!this.launchWorkers()) {
       this.shutdown();
       return;
@@ -237,6 +411,7 @@ public class PassiveMotionSolver extends Thread {
       long now = System.currentTimeMillis();
       if (now - lastUpdateTime > 1000l) {
         FilteredTileResultSet resultSet = this.algorithm.generateResults();
+        log.info("Generated {}", resultSet);
         if (this.userInterface != null) {
           this.userInterface.solutionGenerated(resultSet);
         }
@@ -256,12 +431,11 @@ public class PassiveMotionSolver extends Thread {
 
           Attribute solution = new Attribute();
           solution.setData(solutionBytes.array());
-          solution.setId(this.algorithm.getRegionUri());
+          solution.setId(this.algorithm.getRegionId());
           solution.setAttributeName(GENERATED_ATTRIBUTE_NAME);
 
-          ArrayList<Attribute> solutions = new ArrayList<Attribute>();
-          // TODO: Send attributes
-
+          this.solverWM.updateAttribute(solution);
+          log.info("Sent {}", solution);
         }
         lastUpdateTime = now;
       }
@@ -274,25 +448,173 @@ public class PassiveMotionSolver extends Thread {
       }
     }
   }
-  
-  
-  
-  private boolean launchWorkers() {
-    VarianceHandler handler = new VarianceHandler(this);
 
-    return false;
+  protected void retrieveRegionInfo(String[] matchingUris) {
+    for (String uri : matchingUris) {
+      Response res = this.clientWM.getCurrentSnapshot(uri, "location\\..*",
+          "image\\.url");
+      double width = 0;
+      double height = 0;
+      String imageUrlString = null;
+      try {
+        WorldState state = res.get();
+        for (String stateUri : state.getIdentifiers()) {
+          Collection<Attribute> attributes = state.getState(stateUri);
+          for (Attribute attrib : attributes) {
+            if ("location.maxx".equals(attrib.getAttributeName())) {
+              width = ((Double) DataConverter.decode(attrib.getAttributeName(),
+                  attrib.getData())).doubleValue();
+            } else if ("location.maxy".equals(attrib.getAttributeName())) {
+              height = ((Double) DataConverter.decode(
+                  attrib.getAttributeName(), attrib.getData())).doubleValue();
+            } else if ("image.url".equals(attrib.getAttributeName())) {
+              imageUrlString = (String) DataConverter.decode(
+                  attrib.getAttributeName(), attrib.getData());
+            }
+          }
+        }
+      } catch (Exception e) {
+        log.error("Couldn't retrieve dimension data for {}", uri);
+
+      }
+
+      if (width != 0 && height != 0) {
+        if (this.algorithm != null) {
+          this.algorithm.setRegionXMax((float) width);
+          this.algorithm.setRegionYMax((float) height);
+          log.info("Set region bounds: {},{}", width, height);
+        }
+      }
+      if (imageUrlString != null) {
+        BufferedImage regionImage;
+        try {
+
+          if (!imageUrlString.startsWith("http://")) {
+            imageUrlString = "http://" + imageUrlString;
+          }
+
+          this.setRegionImageUri(imageUrlString);
+          URL imageUrl = new URL(imageUrlString);
+          URLConnection conn = imageUrl.openConnection();
+          conn.setConnectTimeout(5000);
+          conn.connect();
+          this.regionImage = regionImage = ImageIO.read(conn.getInputStream());
+          
+          log.info("Set image for {}: \"{}\".", uri, imageUrl);
+
+        } catch (MalformedURLException e) {
+          log.warn("Malformed URL: {}", imageUrlString);
+          e.printStackTrace();
+        } catch (IOException e) {
+          log.warn("Unable to load region image URL {} due to an exception.",
+              imageUrlString, e);
+          e.printStackTrace();
+        }
+      }
+    }
   }
-  
-  void updateReceiver(){
-    
+
+  protected void retrieveAnchors(final String regionName) {
+    log.info("Retrieving anchor locations.");
+    boolean success = false;
+    do {
+      try {
+        Response res = this.clientWM.getCurrentSnapshot(regionName + "\\.anchor.*",
+            "location\\..*", "sensor.*");
+        WorldState state = res.get();
+
+        success = true;
+
+        for (String uri : state.getIdentifiers()) {
+
+          String sensorString = null;
+          BigInteger deviceId = null;
+          double x = -1;
+          double y = -1;
+          Collection<Attribute> attribs = state.getState(uri);
+          for (Attribute att : attribs) {
+            if ("location.xoffset".equals(att.getAttributeName())) {
+              x = ((Double) DataConverter.decode(att.getAttributeName(),
+                  att.getData())).doubleValue();
+            } else if ("location.yoffset".equals(att.getAttributeName())) {
+              y = ((Double) DataConverter.decode(att.getAttributeName(),
+                  att.getData())).doubleValue();
+            } else if (att.getAttributeName().startsWith("sensor")) {
+              if (att.getAttributeName().equals("sensor.mim")) {
+                continue;
+              }
+              byte[] id = new byte[16];
+              System.arraycopy(att.getData(), 1, id, 0, 16);
+              sensorString = ByteArrayConverter.get().asString(id);
+              deviceId = new BigInteger(sensorString.substring(2), 16);
+            }
+          }
+
+          if (x > 0 && y > 0 && deviceId != null) {
+            if (uri.indexOf("wifi") != -1) {
+              // sensorString = "2."+deviceId.toString(10);
+              sensorString = deviceId.toString(10);
+            } else if (uri.indexOf("pipsqueak") != -1) {
+              // sensorString = "1." + deviceId.toString(10);
+              sensorString = deviceId.toString(10);
+            }
+
+            // HashableByteArray deviceHash = new HashableByteArray(deviceId);
+            Point2D location = new Point2D.Double(x, y);
+            if (uri.contains("transmitter")) {
+              Transmitter tx = new Transmitter();
+              tx.setRegionUri(this.algorithm.getRegionId());
+              tx.setDeviceId(sensorString);
+              tx.setxLocation((float)x);
+              tx.setyLocation((float)y);
+              this.algorithm.addTransmitter(tx);
+            } else if (uri.contains("receiver")) {
+              Receiver rx = new Receiver();
+              rx.setRegionUri(this.algorithm.getRegionId());
+              rx.setxLocation((float)x);
+              rx.setyLocation((float)y);
+              rx.setDeviceId(sensorString);
+              this.algorithm.addReceiver(rx);
+            } else {
+              return;
+            }
+          }
+        }
+
+      } catch (Exception e) {
+        log.error("Couldn't retrieve location data for anchors in "
+            + this.algorithm.getRegionId() + ".", e);
+        try {
+          Thread.sleep(250);
+        } catch (InterruptedException ie) {
+          // Ignored
+        }
+      }
+    } while (!success);
+
+    log.info("Loaded anchors.");
   }
-  
-  void updateTransmitter(){
-    
+
+  private boolean launchWorkers() {
+//    this.deviceHandler = new DeviceHandler(this);
+//    this.deviceHandler.start();
+
+    this.varianceHandler = new VarianceHandler(this);
+    this.varianceHandler.start();
+
+    return true;
   }
-  
-  void updateRssi(){
-    
+
+  void updateReceiver() {
+
+  }
+
+  void updateTransmitter() {
+
+  }
+
+  void updateRssi() {
+
   }
 
   private void shutdown() {
@@ -386,134 +708,6 @@ public class PassiveMotionSolver extends Thread {
 
   public void setUserInterface(UserInterfaceAdapter userInterface) {
     this.userInterface = userInterface;
-  }
-
-  // FIXME: Got a response from the world model, parse it!
-  public void dataResponseReceived(ClientWorldModelInterface worldModel,
-      DataResponseMessage message) {
-    String uri = message.getId();
-
-    // Region response
-    if (uri.equalsIgnoreCase("winlab")) {
-      Attribute[] fields = message.getAttributes();
-      if (fields == null) {
-        log.warn("No fields available for {}.", uri);
-        return;
-      }
-      String mapURL = null;
-      for (Attribute field : fields) {
-        if ("width".equalsIgnoreCase(field.getAttributeName())) {
-          Double width = (Double) DataConverter.decode(
-              field.getAttributeName(), field.getData());
-          this.algorithm.setRegionXMax(width.floatValue());
-        } else if ("height".equalsIgnoreCase(field.getAttributeName())) {
-          Double height = (Double) DataConverter.decode(
-              field.getAttributeName(), field.getData());
-          this.algorithm.setRegionYMax(height.floatValue());
-        } else if ("map url".equals(field.getAttributeName())) {
-          mapURL = (String) DataConverter.decode(field.getAttributeName(),
-              field.getData());
-          continue;
-        }
-      }
-      this.setRegionImageUri(mapURL);
-    }
-
-    // Handle interesting regions
-    if ("winlab".equals(message.getId())) {
-      Attribute[] fields = message.getAttributes();
-      if (fields == null) {
-        log.warn("No information about {} available.", "winlab");
-        return;
-      }
-
-      Dimension regionDimensions = new Dimension();
-      double width = 0.0;
-      double height = 0.0;
-      String mapURL = null;
-      for (Attribute field : fields) {
-        if ("width".equals(field.getAttributeName())) {
-          width = ((Double) DataConverter.decode(field.getAttributeName(),
-              field.getData()));
-          continue;
-        } else if ("height".equals(field.getAttributeName())) {
-          height = ((Double) DataConverter.decode(field.getAttributeName(),
-              field.getData()));
-          continue;
-        } else if ("map url".equals(field.getAttributeName())) {
-          mapURL = (String) DataConverter.decode(field.getAttributeName(),
-              field.getData());
-          continue;
-        }
-      }
-      regionDimensions.setSize(width, height);
-      this.setRegionImageUri(mapURL);
-    }
-
-    // Check if this is a transmitter
-    if (uri.indexOf("transmitter") != -1) {
-      Transmitter txer = new Transmitter();
-      Attribute[] fields = message.getAttributes();
-      if (fields == null) {
-        log.warn("No fields available for {}.", uri);
-        return;
-      }
-      for (Attribute field : fields) {
-        // X-coordinate
-        if ("location.x".equalsIgnoreCase(field.getAttributeName())) {
-          Double xPos = (Double) DataConverter.decode(field.getAttributeName(),
-              field.getData());
-          txer.setxLocation(xPos.floatValue());
-        } else if ("location.y".equalsIgnoreCase(field.getAttributeName())) {
-          Double yPos = (Double) DataConverter.decode(field.getAttributeName(),
-              field.getData());
-          txer.setyLocation(yPos.floatValue());
-        } else if ("id".equalsIgnoreCase(field.getAttributeName())) {
-          Long id = (Long) DataConverter.decode(field.getAttributeName(),
-              field.getData());
-          // FIXME: Shouldn't hard-code, where do we consolidate the
-          // device ID size?
-          String deviceId = StringConverter.get().decode(field.getData()).substring(1); 
-          
-          txer.setDeviceId(deviceId);
-        } else if ("region_uri".equalsIgnoreCase(field.getAttributeName())) {
-          String region = (String) DataConverter.decode(
-              field.getAttributeName(), field.getData());
-          txer.setRegionUri(region);
-        }
-      }
-      log.info("Added {} ", txer);
-      this.algorithm.addTransmitter(txer);
-    } else if (uri.indexOf("receiver") != -1) {
-      Receiver rxer = new Receiver();
-
-      Attribute[] fields = message.getAttributes();
-      if (fields == null) {
-        log.warn("No fields available for {}.", uri);
-        return;
-      }
-      for (Attribute field : fields) {
-        // X-coordinate
-        if ("location.x".equalsIgnoreCase(field.getAttributeName())) {
-          Double xPos = (Double) DataConverter.decode(field.getAttributeName(),
-              field.getData());
-          rxer.setxLocation(xPos.floatValue());
-        } else if ("location.y".equalsIgnoreCase(field.getAttributeName())) {
-          Double yPos = (Double) DataConverter.decode(field.getAttributeName(),
-              field.getData());
-          rxer.setyLocation(yPos.floatValue());
-        } else if ("id".equalsIgnoreCase(field.getAttributeName())) {
-          String deviceId = StringConverter.get().decode(field.getData()).substring(1); 
-          rxer.setDeviceId(deviceId);
-        } else if ("region_uri".equalsIgnoreCase(field.getAttributeName())) {
-          String region = (String) DataConverter.decode(
-              field.getAttributeName(), field.getData());
-        }
-      }
-
-      log.info("Added {}", rxer);
-      this.algorithm.addReceiver(rxer);
-    }
   }
 
   // TODO: Got a search response from the world model.
