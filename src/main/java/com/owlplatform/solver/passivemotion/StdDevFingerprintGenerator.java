@@ -26,12 +26,14 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.grailrtls.libcommon.SampleMessage;
-import org.grailrtls.libcommon.util.HashableByteArray;
-import org.grailrtls.libcommon.util.NumericUtils;
-import org.grailrtls.libcommon.util.OnlineVariance;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.owlplatform.common.SampleMessage;
+import com.owlplatform.common.util.HashableByteArray;
+import com.owlplatform.common.util.NumericUtils;
+import com.owlplatform.common.util.OnlineVariance;
 
 public class StdDevFingerprintGenerator {
 
@@ -76,7 +78,7 @@ public class StdDevFingerprintGenerator {
 
 		if (variance == null) {
 			variance = new OnlineVariance();
-			variance.setMaxAge(this.maxSampleAge);
+			variance.setAgeGap(this.maxSampleAge);
 			variance.setMaxHistory(this.maxNumSamples);
 		}
 

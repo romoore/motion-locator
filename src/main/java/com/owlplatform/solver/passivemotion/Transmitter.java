@@ -19,7 +19,9 @@
 
 package com.owlplatform.solver.passivemotion;
 
-import org.grailrtls.libcommon.util.NumericUtils;
+import com.owlplatform.common.util.NumericUtils;
+
+
 
 public class Transmitter {
 

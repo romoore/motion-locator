@@ -28,12 +28,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.print.attribute.standard.Finishings;
 
-import org.grailrtls.libcommon.SampleMessage;
-import org.grailrtls.libcommon.util.HashableByteArray;
-import org.grailrtls.libcommon.util.NumericUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.owlplatform.common.SampleMessage;
+import com.owlplatform.common.util.HashableByteArray;
+import com.owlplatform.common.util.NumericUtils;
 import com.owlplatform.solver.passivemotion.StdDevFingerprintGenerator;
 
 public class PassiveMotionAlgorithm {

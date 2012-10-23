@@ -23,7 +23,8 @@ package com.owlplatform.solver.passivemotion;
 
 import java.awt.geom.Line2D;
 
-import org.grailrtls.libcommon.util.NumericUtils;
+import com.owlplatform.common.util.NumericUtils;
+
 
 public class RSSILine
 {

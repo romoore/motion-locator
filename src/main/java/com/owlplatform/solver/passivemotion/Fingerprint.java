@@ -21,8 +21,9 @@ package com.owlplatform.solver.passivemotion;
 
 import java.util.HashMap;
 
-import org.grailrtls.libcommon.util.HashableByteArray;
-import org.grailrtls.libcommon.util.NumericUtils;
+import com.owlplatform.common.util.HashableByteArray;
+import com.owlplatform.common.util.NumericUtils;
+
 
 public class Fingerprint {
 
