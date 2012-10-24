@@ -1,5 +1,6 @@
 /*
- * GRAIL Real Time Localization System
+ * Motion Locator Solver for Owl Platform
+ * Copyright (C) 2012 Robert Moore and the Owl Platform
  * Copyright (C) 2011 Rutgers University and Robert Moore
  * 
  * This program is free software; you can redistribute it and/or modify
@@ -56,12 +57,13 @@ public class KernelPanel extends JPanel implements ChangeListener{
 		super();
 		
 		this.setLayout(new GridLayout(this.kernel.length, this.kernel[0].length));
-		
+		this.spinners = new JSpinner[this.kernel.length][this.kernel[0].length];
 		for(int i = 0; i < this.kernel.length; ++i)
 		{
+		  
 			for(int j = 0; j < this.kernel[i].length; ++j)
 			{
-				this.spinners[i][j] = new JSpinner(new SpinnerNumberModel(0.0, Float.MIN_VALUE, Float.MAX_VALUE, 0.001));
+				this.spinners[i][j] = new JSpinner(new SpinnerNumberModel(0.0, -10, 10, 0.1));
 				this.add(spinners[i][j]);
 				this.spinners[i][j].addChangeListener(this);
 			}
@@ -79,7 +81,7 @@ public class KernelPanel extends JPanel implements ChangeListener{
 			{
 				if(arg0.getSource() == this.spinners[i][j])
 				{
-					this.kernel[i][j] = ((Float)((JSpinner)arg0.getSource()).getValue()).floatValue();
+					this.kernel[i][j] = ((Double)((JSpinner)arg0.getSource()).getValue()).floatValue();
 					break;
 				}
 			}
@@ -90,6 +92,10 @@ public class KernelPanel extends JPanel implements ChangeListener{
 	{
 		return this.kernel;
 	}
+
+  public void setKernel(float[][] kernel) {
+    this.kernel = kernel;
+  }
 	
 	
 }

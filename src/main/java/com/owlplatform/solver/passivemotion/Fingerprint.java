@@ -1,5 +1,6 @@
 /*
- * GRAIL Real Time Localization System
+ * Motion Locator Solver for Owl Platform
+ * Copyright (C) 2012 Robert Moore and the Owl Platform
  * Copyright (C) 2011 Rutgers University and Robert Moore
  * 
  * This program is free software; you can redistribute it and/or modify

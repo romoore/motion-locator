@@ -1,5 +1,6 @@
 /*
- * GRAIL Real Time Localization System
+ * Motion Locator Solver for Owl Platform
+ * Copyright (C) 2012 Robert Moore and the Owl Platform
  * Copyright (C) 2011 Rutgers University and Robert Moore
  * 
  * This program is free software; you can redistribute it and/or modify
@@ -386,10 +387,15 @@ public class PassiveMotionSolver extends Thread {
     this.algorithm = new PassiveMotionAlgorithm(config);
     this.algorithm.setStdDevFingerprinter(fingerprinter);
     this.algorithm.setRegionUri(region);
+    
   }
 
   public void run() {
 
+    if(this.userInterface != null){
+      this.userInterface.setCustomKernel(this.algorithm.getCustomKernel());
+    }
+    
     // Connect to aggregator, distributor, and world server
     if (!this.startConnections()) {
       log.error("Unable to connect to the world model.");
@@ -434,8 +440,8 @@ public class PassiveMotionSolver extends Thread {
           solution.setId(this.algorithm.getRegionId());
           solution.setAttributeName(GENERATED_ATTRIBUTE_NAME);
 
-          this.solverWM.updateAttribute(solution);
-          log.info("Sent {}", solution);
+//          this.solverWM.updateAttribute(solution);
+//          log.info("Sent {}", solution);
         }
         lastUpdateTime = now;
       }
@@ -603,18 +609,6 @@ public class PassiveMotionSolver extends Thread {
     this.varianceHandler.start();
 
     return true;
-  }
-
-  void updateReceiver() {
-
-  }
-
-  void updateTransmitter() {
-
-  }
-
-  void updateRssi() {
-
   }
 
   private void shutdown() {

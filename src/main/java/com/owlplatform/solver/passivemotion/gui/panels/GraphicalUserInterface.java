@@ -1,5 +1,6 @@
 /*
- * GRAIL Real Time Localization System
+ * Motion Locator Solver for Owl Platform
+ * Copyright (C) 2012 Robert Moore and the Owl Platform
  * Copyright (C) 2011 Rutgers University and Robert Moore
  * 
  * This program is free software; you can redistribute it and/or modify
@@ -21,6 +22,7 @@ package com.owlplatform.solver.passivemotion.gui.panels;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.image.BufferedImage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -28,6 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.swing.JFrame;
+import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 
@@ -35,71 +38,79 @@ import com.owlplatform.solver.passivemotion.FilteredTileResultSet;
 import com.owlplatform.solver.passivemotion.ScoredTile;
 
 public class GraphicalUserInterface extends JFrame implements
-		UserInterfaceAdapter {
+    UserInterfaceAdapter {
 
-	protected final ConcurrentLinkedQueue<FilteredTileResultSet> tileHistory = new ConcurrentLinkedQueue<FilteredTileResultSet>();
+  protected final ConcurrentLinkedQueue<FilteredTileResultSet> tileHistory = new ConcurrentLinkedQueue<FilteredTileResultSet>();
 
-	protected ConcurrentHashMap<String, TileViewPanel> tilePanels = new ConcurrentHashMap<String, TileViewPanel>();
+  protected ConcurrentHashMap<String, TileViewPanel> tilePanels = new ConcurrentHashMap<String, TileViewPanel>();
 
-	protected JTabbedPane tabbedPane = new JTabbedPane();
-	
-	protected BufferedImage backgroundImage = null;
+  protected JTabbedPane tabbedPane = new JTabbedPane();
 
-	protected final ExecutorService workers = Executors
-			.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+  protected KernelPanel customKernelPanel = new KernelPanel();
 
-	public GraphicalUserInterface() {
-		super();
-		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		this.setPreferredSize(new Dimension(800, 600));
-		this.setLayout(new BorderLayout());
-		this.add(BorderLayout.CENTER, this.tabbedPane);
-		this.pack();
-		this.setVisible(true);
-	}
+  protected BufferedImage backgroundImage = null;
 
-	@Override
-	public void solutionGenerated(final FilteredTileResultSet tileSet) {
+  protected final ExecutorService workers = Executors
+      .newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-		if(tileSet == null){
-			return;
-		}
-		this.workers.execute(new Runnable() {
+  public GraphicalUserInterface() {
+    super();
+    
+    this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    this.setPreferredSize(new Dimension(800, 600));
+    this.setLayout(new BorderLayout());
+    this.add(BorderLayout.CENTER, this.tabbedPane);
+    JPanel flowPanel = new JPanel(new FlowLayout());
+    flowPanel.add(this.customKernelPanel);
+    this.add(BorderLayout.SOUTH, flowPanel);
+    this.pack();
+    this.setVisible(true);
+  }
+  
+  public void setCustomKernel(float[][] kernel){
+    this.customKernelPanel.setKernel(kernel);
+  }
 
-			@Override
-			public void run() {
-				// TODO: Add history?
-				GraphicalUserInterface.this.tileHistory.poll();
-				GraphicalUserInterface.this.tileHistory.add(tileSet);
+  @Override
+  public void solutionGenerated(final FilteredTileResultSet tileSet) {
 
-				for (String desc : tileSet.getResults().keySet()) {
-					TileViewPanel panel = null;
-					synchronized (GraphicalUserInterface.this.tilePanels) {
-						panel = GraphicalUserInterface.this.tilePanels
-								.get(desc);
-						if (panel == null) {
-							panel = new TileViewPanel();
-							panel.setBackgroundImage(GraphicalUserInterface.this.backgroundImage);
-							GraphicalUserInterface.this.tilePanels.put(desc,
-									panel);
-							GraphicalUserInterface.this.tabbedPane.add(desc,
-									panel);
-						}
-					}
-					panel.setLines(tileSet.getLines());
-					panel.setTiles(tileSet.getResult(desc).getTiles());
+    if (tileSet == null) {
+      return;
+    }
+    this.workers.execute(new Runnable() {
 
-				}
-			}
-		});
-	}
+      @Override
+      public void run() {
+        // TODO: Add history?
+        GraphicalUserInterface.this.tileHistory.poll();
+        GraphicalUserInterface.this.tileHistory.add(tileSet);
 
-	@Override
-	public void setBackground(BufferedImage backgroundImage) {
-		this.backgroundImage = backgroundImage;
-		for(TileViewPanel panel : this.tilePanels.values()){
-			panel.setBackgroundImage(backgroundImage);
-		}
-	}
+        for (String desc : tileSet.getResults().keySet()) {
+          TileViewPanel panel = null;
+          synchronized (GraphicalUserInterface.this.tilePanels) {
+            panel = GraphicalUserInterface.this.tilePanels.get(desc);
+            if (panel == null) {
+              panel = new TileViewPanel();
+              panel
+                  .setBackgroundImage(GraphicalUserInterface.this.backgroundImage);
+              GraphicalUserInterface.this.tilePanels.put(desc, panel);
+              GraphicalUserInterface.this.tabbedPane.add(desc, panel);
+            }
+          }
+          panel.setLines(tileSet.getLines());
+          panel.setTiles(tileSet.getResult(desc).getTiles());
+
+        }
+      }
+    });
+  }
+
+  @Override
+  public void setBackground(BufferedImage backgroundImage) {
+    this.backgroundImage = backgroundImage;
+    for (TileViewPanel panel : this.tilePanels.values()) {
+      panel.setBackgroundImage(backgroundImage);
+    }
+  }
 
 }

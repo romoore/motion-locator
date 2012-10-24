@@ -1,5 +1,6 @@
 /*
- * GRAIL Real Time Localization System
+ * Motion Locator Solver for Owl Platform
+ * Copyright (C) 2012 Robert Moore and the Owl Platform
  * Copyright (C) 2011 Rutgers University and Robert Moore
  * 
  * This program is free software; you can redistribute it and/or modify
@@ -57,22 +58,29 @@ public class StdDevFingerprintGenerator {
     public SampleMessage sample;
   }
 
-  protected ConcurrentHashMap<String, ConcurrentHashMap<String, Float>> varianceByRbyT = new ConcurrentHashMap<String, ConcurrentHashMap<String, Float>>();
+  protected ConcurrentHashMap<String, ConcurrentHashMap<String, TimestampedFloat>> varianceByRbyT = new ConcurrentHashMap<String, ConcurrentHashMap<String, TimestampedFloat>>();
 
   public void addVariance(String transmitter, String receiver, float variance,
       long timestamp) {
 
     if (transmitter == null || receiver == null)
       return;
-    ConcurrentHashMap<String, Float> varianceByTxer = this.varianceByRbyT
+    ConcurrentHashMap<String, TimestampedFloat> varianceByTxer = this.varianceByRbyT
         .get(receiver);
     if (varianceByTxer == null) {
-      varianceByTxer = new ConcurrentHashMap<String, Float>();
+      varianceByTxer = new ConcurrentHashMap<String, TimestampedFloat>();
       this.varianceByRbyT.put(receiver, varianceByTxer);
     }
 
-    varianceByTxer.put(transmitter, Float.valueOf(variance));
-
+    TimestampedFloat value = varianceByTxer.get(transmitter);
+    if(value == null){
+      value = new TimestampedFloat(variance,timestamp);
+      varianceByTxer.put(transmitter, value);
+    }else {
+      value.value = variance;
+      value.timestamp = timestamp;
+    }
+    
   }
 
   public Fingerprint generateFingerprint(String receiverId) {
@@ -84,7 +92,7 @@ public class StdDevFingerprintGenerator {
 
     log.debug("Generating fingerprint for {}.", receiverId);
 
-    ConcurrentHashMap<String, Float> receiverVariance = this.varianceByRbyT
+    ConcurrentHashMap<String, TimestampedFloat> receiverVariance = this.varianceByRbyT
         .get(receiverId);
 
     if (receiverVariance == null || receiverVariance.size() == 0) {
@@ -104,10 +112,13 @@ public class StdDevFingerprintGenerator {
       float stdDevRssi = 0f;
       int numRssis = 1;
       float meanRssi = 0f;
-      Float variance = receiverVariance.get(receiver);
-
+      TimestampedFloat variance = receiverVariance.get(receiver);
+      if(variance.timestamp < oldestTime){
+        receiverVariance.remove(receiver);
+        continue;
+      }
       stdDevRssiValues.put(receiver,
-          Float.valueOf(variance));
+          Float.valueOf(variance.value));
     }
     if (stdDevRssiValues.size() == 0) {
       log.debug("No values computed.");

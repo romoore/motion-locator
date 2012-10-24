@@ -1,5 +1,5 @@
 /*
- * Motion Solver for Owl Platform
+ * Motion Locator Solver for Owl Platform
  * Copyright (C) 2012 Robert Moore and the Owl Platform
  * 
  * This program is free software; you can redistribute it and/or modify
@@ -22,18 +22,20 @@ package com.owlplatform.solver.passivemotion;
  * @author Robert Moore
  *
  */
-public class AlgorithmConfig {
+public class TimestampedFloat {
+ 
+  public float value;
+  public long timestamp;
   
+  public TimestampedFloat(float f){
+    super();
+    this.value = f;
+    this.timestamp = System.currentTimeMillis();
+  }
   
-  protected float tileScoreThreshold = .5f;
-
-  protected float stdDevNoiseThreshold = 1.2f;
-
-  protected float radiusThreshold = 90f;
-
-  protected float lineLengthPower = 1.1f;
-  
-  protected float desiredTileWidth = 20f;
-
-  protected float desiredTileHeight = 20f;
+  public TimestampedFloat(float f, long ts){
+    super();
+    this.value = f;
+    this.timestamp = ts;
+  }
 }
