@@ -88,8 +88,11 @@ public class PassiveMotionAlgorithm {
     tileFilterKernel5x5a[4] = new float[] { -1f, -1f, -1f, -1f, -1f };
   }
 
-  private float[][] customKernel = new float[][] { { 0, 0, 0 }, { 0, 0, 0 },
-      { 0, 0, 0 } };
+  private float[][] userKernel = new float[][] { { -.1f, -.1f, -.1f, -.1f, -.1f }, 
+                                                      { -.1f,  .2f,  .5f,  .2f, -.1f },
+                                                      { -.1f,  .2f, 2.0f,  .2f, -.1f },
+                                                      { -.1f,  .2f,  .5f,  .2f, -.1f},
+                                                      { -.1f, -.1f, -.1f, -.1f, -.1f} };
 
   public PassiveMotionAlgorithm(AlgorithmConfig config) {
     super();
@@ -242,11 +245,11 @@ public class PassiveMotionAlgorithm {
     result.setKernel(tileFilterKernel5x5a);
     resultSet.setTiles("micro-k5x5a", result);
 
-    ScoredTile[][] custom3x3 = this.createMicroTiles(baseRaw);
+    ScoredTile[][] userDefined = this.createMicroTiles(baseRaw);
     result = new FilteredTileResult();
-    result.setTiles(custom3x3);
-    result.setKernel(this.customKernel);
-    resultSet.setTiles("custom-3x3", result);
+    result.setTiles(userDefined);
+    result.setKernel(this.userKernel);
+    resultSet.setTiles("User Defined", result);
 
     // log.info("Macro tiles:\n{}", this.printScoreMap(unfilteredTiles));
     // log.info("Micro tiles:\n{}", this.printScoreMap(microTiles));
@@ -267,7 +270,7 @@ public class PassiveMotionAlgorithm {
 
     this.applyKernel(tileFilterKernel5x5a, microRaw, microk5x5a);
 
-    this.applyKernel(this.customKernel, microRaw, custom3x3);
+    this.applyKernel(this.userKernel, microRaw, userDefined);
 
     // this.applyHighPass(baseK5x5a, 5);
 
@@ -423,9 +426,9 @@ public class PassiveMotionAlgorithm {
           }
         }
 
-        if (Math.abs(kernelSum) > 1) {
-          outTiles[x][y].score /= kernelSum;
-        }
+//        if (Math.abs(kernelSum) > 1) {
+//          outTiles[x][y].score /= kernelSum;
+//        }
 
         if (outTiles[x][y].getScore() < 0) {
           outTiles[x][y].setScore(0f);
@@ -658,10 +661,10 @@ public class PassiveMotionAlgorithm {
   }
 
   public float[][] getCustomKernel() {
-    return this.customKernel;
+    return this.userKernel;
   }
 
   public void setCustomKernel(float[][] customKernel) {
-    this.customKernel = customKernel;
+    this.userKernel = customKernel;
   }
 }

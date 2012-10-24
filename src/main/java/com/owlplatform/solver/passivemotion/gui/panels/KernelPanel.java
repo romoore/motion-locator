@@ -56,21 +56,31 @@ public class KernelPanel extends JPanel implements ChangeListener{
 	{
 		super();
 		
-		this.setLayout(new GridLayout(this.kernel.length, this.kernel[0].length));
-		this.spinners = new JSpinner[this.kernel.length][this.kernel[0].length];
-		for(int i = 0; i < this.kernel.length; ++i)
-		{
-		  
-			for(int j = 0; j < this.kernel[i].length; ++j)
-			{
-				this.spinners[i][j] = new JSpinner(new SpinnerNumberModel(0.0, -10, 10, 0.1));
-				this.add(spinners[i][j]);
-				this.spinners[i][j].addChangeListener(this);
-			}
-		}
+		this.layoutSpinners();
 		
 	}
 
+	private void layoutSpinners(){
+	  this.removeAll();
+	  this.setLayout(new GridLayout(this.kernel.length, this.kernel[0].length));
+    this.spinners = new JSpinner[this.kernel.length][this.kernel[0].length];
+    for(int i = 0; i < this.kernel.length; ++i)
+    {
+      
+      for(int j = 0; j < this.kernel[i].length; ++j)
+      {
+        if(this.spinners[i][j] != null){
+          
+          this.spinners[i][j].removeChangeListener(this);
+        }
+        
+        this.spinners[i][j] = new JSpinner(new SpinnerNumberModel(this.kernel[i][j], -10, 10, 0.1));
+        this.add(spinners[i][j]);
+        this.spinners[i][j].addChangeListener(this);
+      }
+    }
+	}
+	
 	@Override
 	public void stateChanged(ChangeEvent arg0) {
 		
@@ -95,6 +105,7 @@ public class KernelPanel extends JPanel implements ChangeListener{
 
   public void setKernel(float[][] kernel) {
     this.kernel = kernel;
+    this.layoutSpinners();
   }
 	
 	

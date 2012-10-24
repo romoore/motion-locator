@@ -417,7 +417,6 @@ public class PassiveMotionSolver extends Thread {
       long now = System.currentTimeMillis();
       if (now - lastUpdateTime > 1000l) {
         FilteredTileResultSet resultSet = this.algorithm.generateResults();
-        log.info("Generated {}", resultSet);
         if (this.userInterface != null) {
           this.userInterface.solutionGenerated(resultSet);
         }
