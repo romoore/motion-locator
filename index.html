@@ -57,8 +57,8 @@
         "free space".  However, in many indoor environments, two general
         properties can be observed: (1) the human body strongly influences the
         propagation of RF signals in the 1-2.4GHz range, and (2) line-of-sight
-        signal propagation estimation is slightly inaccurate, but very
-        inexpensive.</p>
+        signal propagation estimation is slightly inaccurate, but
+        computationally inexpensive.</p>
 
         <p>To exploit these two observations, the algorithm works like this:
         <ol>
@@ -87,6 +87,23 @@
           University DCS Technical Report 674">experimental results</a> showed that it
         could achieve 90% correct localization of motion for up to 3
         individuals with reasonable accuracy and low false positive rates.</p>
+
+        <h2>Examples</h2>
+        <p>As an aid to both development and algorithmic evaluation, the
+        solver can provide a graphical user interface (GUI) that displays the
+        generated results in real time.  Currently, this GUI is being used to
+        compare the results of different kernels for filtering of the
+        results. The example below shows a screenshot of our research
+        laboratory while 2 people are walking around near each other (hence
+        the connectedness of the tiles). No filtering is applied to these
+        results.</p>
+
+        <div style="text-align: center">
+          <a href="images/example-2p.png"><img
+            src="images/example-2p-tn.png" alt="Screenshot showing 2 people
+            moving near to each other." title="Screenshot showing 2 people
+            moving near to each other." /></a>
+        </div>
 
         <h2>Continuing Work</h2>
         <p>As it is a research project, and a bit of a hobby of mine, I
