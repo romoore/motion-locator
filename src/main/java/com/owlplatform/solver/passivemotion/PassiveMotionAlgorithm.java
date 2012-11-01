@@ -89,10 +89,10 @@ public class PassiveMotionAlgorithm {
   }
 
   private float[][] userKernel = new float[][] { { -.1f, -.1f, -.1f, -.1f, -.1f }, 
-                                                      { -.1f,  .2f,  .5f,  .2f, -.1f },
-                                                      { -.1f,  .2f, 2.0f,  .2f, -.1f },
-                                                      { -.1f,  .2f,  .5f,  .2f, -.1f},
-                                                      { -.1f, -.1f, -.1f, -.1f, -.1f} };
+                                                    { -.1f, -.2f, -.2f, -.2f, -.1f },
+                                                    { -.1f, -.2f, 2.0f, -.2f, -.1f },
+                                                    { -.1f, -.2f, -.2f, -.2f, -.1f},
+                                                    { -.1f, -.1f, -.1f, -.1f, -.1f} };
 
   public PassiveMotionAlgorithm(AlgorithmConfig config) {
     super();
