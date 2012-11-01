@@ -13,7 +13,7 @@
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
 
-    <title>Motion-locator by romoore</title>
+    <title>Motion-locator by Robert Moore</title>
   </head>
 
   <body>
@@ -28,24 +28,90 @@
     <div id="content-wrapper">
       <div class="inner clearfix">
         <section id="main-content">
-          <h1>Passive Motion Localization</h1>
+        <h1>Passive Motion Localization</h1>
 
-<p>This Owl Platform solver uses RSSI variance data, combined with the locations of transmitters and receivers, to determine the location of motion within an area of interest.</p>
+        <p>This Owl Platform solver uses RSSI variance data, combined with the locations of transmitters and receivers, to determine the location of motion within an area of interest.</p>
+
+        <h2>Tracking without Training</h2>
+        <p>The solver is both an ongoing research project and a solver for the
+        <a href="http://www.owlplatform.com">Owl Platform</a>. The primary
+        goal is to obtain device-free motion localization for "free" in
+        situations where device (active) localization is already possible. By
+        free I mean that there shouldn't be any additional set-up or data
+        collection required beyond what is necessary for active localization.</p>
+
+        <p>The current version works on a very simple principle: as objects
+        move around in an RF-rich environment, they can cause interference
+        with the radio waves.  This interference is observable by receivers in
+        the form of RSSI (Received Signal Strength Indicator) fluctuations.
+        By computing the short-term (3-5 second) variance of the RSSI value,
+        and knowing the location of some transmitters and receivers (already
+        necessary for active localization), it is possible to approximate the
+        location of the interfering motion using a simple
+        lines-intersecting-tiles technique.</p>
+
+        <h2>The Algorithm</h2>
+        <p>Indoor RF propagation paths are far from simple. In fact,
+        multiple-path propagation effects make communication, tracking, and
+        other radio-based technologies much more difficult than outdoor or in
+        "free space".  However, in many indoor environments, two general
+        properties can be observed: (1) the human body strongly influences the
+        propagation of RF signals in the 1-2.4GHz range, and (2) line-of-sight
+        signal propagation estimation is slightly inaccurate, but very
+        inexpensive.</p>
+
+        <p>To exploit these two observations, the algorithm works like this:
+        <ol>
+          <li>Partition the space into an evenly-sized grid of rectangular
+          "tiles". Each tile will overlap its neighboring tiles by 50% (to
+          somewhat reduce aliasing effects).</li>
+          <li>Compute the standard deviation of the RSSI value from every
+          transmitter to every receiver where the link distance is &le;30m.
+          Trimming long links helps to elminate variances caused by random
+          effects.</li>
+          <li>Compute a "score" for each tile based on the value of each link
+          that passes over it.  The link is assumed to follow a straight path
+          between the locations of the transmitter and receiver.  Details are
+          not provided here, but are available in the source code.</li>
+          <li>Over the entire set of tiles, identify those tiles whose score
+          is a local maximum and filter based on a minimum threshold.</li>
+          <li>The tiles that remain are predictions of the location of motion
+          in the area.</li>
+        </ol>
+
+        <p>While the algorithm is rather crude and simplistic, it works
+        surprisingly well.  Without needing to train the algorithm for
+        specific environmental conditions, <a
+          href="http://www.cs.rutgers.edu/research/technical_reports/reports.php?action=view&series_id=1&report_id=674"
+          title="Rutgers University DCS Technical Report 674" alt="Rutgers
+          University DCS Technical Report 674">experimental results</a> showed that it
+        could achieve 90% correct localization of motion for up to 3
+        individuals with reasonable accuracy and low false positive rates.</p>
+
+        <h2>Continuing Work</h2>
+        <p>As it is a research project, and a bit of a hobby of mine, I
+        continue to work on improving the results and trying new ideas.
+        Currently I'm working with convolution matrices to try and reduce the
+        area identifying the motion without sacrificing the accuracy or
+        recall.</p>
+
         </section>
 
         <aside id="sidebar">
-          <a href="https://github.com/romoore/motion-locator/zipball/master" class="button">
-            <small>Download</small>
-            .zip file
-          </a>
-          <a href="https://github.com/romoore/motion-locator/tarball/master" class="button">
-            <small>Download</small>
-            .tar.gz file
-          </a>
+        <a href="https://github.com/romoore/motion-locator/zipball/master" class="button">
+          <small>Download</small>
+          .zip file
+        </a>
+        <a href="https://github.com/romoore/motion-locator/tarball/master" class="button">
+          <small>Download</small>
+          .tar.gz file
+        </a>
 
-          <p class="repo-owner"><a href="https://github.com/romoore/motion-locator"></a> is maintained by <a href="https://github.com/romoore">romoore</a>.</p>
+        <p class="repo-owner"><a
+          href="https://github.com/romoore/motion-locator"></a> is
+        maintained by <a href="https://github.com/romoore">Robert Moore</a>.</p>
 
-          <p>This page was generated by <a href="pages.github.com">GitHub Pages</a> using the Architect theme by <a href="http://twitter.com/jasonlong">Jason Long</a>.</p>
+        <p>This page was generated by <a href="pages.github.com">GitHub Pages</a> using the Architect theme by <a href="http://twitter.com/jasonlong">Jason Long</a>.</p>
         </aside>
       </div>
     </div>
