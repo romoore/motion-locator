@@ -53,10 +53,10 @@ with this software as the file LICENSE.  If not, you may download a copy from
 
     java -jar path/to/motion-locator-1.0.0-SNAPSHOT-jar-with-dependencies.jar
 
-  SigVis takes an required set of parameters to connect to a remote Owl/GRAIL
-  World Model server on startup.  To do so, specify the World Model host/IP,
-  client port, and a region name as commandline parameters:
+	Motion Locator takes a required set of parameters to connect to a remote
+	Owl/GRAIL World Model server on startup.  To do so, specify the World Model
+	host/IP, client port, and a region name as commandline parameters:
 
     java -jar path/to/motion-locator-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
-      grail.mydomain.com 7010 myregion
+      grail.mydomain.com 7009 7010 myregion config.xml --gui
 
