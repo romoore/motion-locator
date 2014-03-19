@@ -439,6 +439,7 @@ public class PassiveMotionSolver extends Thread {
           solution.setData(solutionBytes.array());
           solution.setId(this.algorithm.getRegionId());
           solution.setAttributeName(GENERATED_ATTRIBUTE_NAME);
+          solution.setCreationDate(now);
 
           this.solverWM.updateAttribute(solution);
           log.info("Sent {}", solution);
