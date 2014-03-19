@@ -30,5 +30,5 @@ public interface UserInterfaceAdapter {
 	
 	public void setBackground(BufferedImage backgroundImage);
 	
-	public void setCustomKernel(float[][] newKernel);
+//	public void setCustomKernel(float[][] newKernel);
 }

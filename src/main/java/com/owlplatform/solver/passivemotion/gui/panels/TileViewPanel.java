@@ -33,8 +33,12 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,173 +56,190 @@ import com.owlplatform.solver.passivemotion.ScoredTile;
 
 public class TileViewPanel extends JPanel {
 
-	private static final Logger log = LoggerFactory
-			.getLogger(TileViewPanel.class);
+  private static final Logger log = LoggerFactory
+      .getLogger(TileViewPanel.class);
 
-	protected ScoredTile[][] tiles = null;
-	
-	protected Collection<RSSILine> lines = null;
+  protected Map<String, ScoredTile[][]> tiles = new HashMap<String, ScoredTile[][]>();
 
-	protected BufferedImage backgroundImage = null;
-	
-	public BufferedImage getBackgroundImage() {
-		return backgroundImage;
-	}
+  protected Collection<RSSILine> lines = null;
 
-	public void setBackgroundImage(BufferedImage backgroundImage) {
-		this.backgroundImage = backgroundImage;
-	}
+  protected BufferedImage backgroundImage = null;
+  protected static final Color[] COLOR_LIST = new Color[10];
+  static {
+    int length = COLOR_LIST.length;
+    float fLength = (float)length;
+    for(int i = 0; i < length; ++i){
+      
+      COLOR_LIST[i] = Color.getHSBColor(i/fLength, 1.0f, 0.8f);
+    }
+  }
 
-	public Collection<RSSILine> getLines() {
-		return lines;
-	}
+  public BufferedImage getBackgroundImage() {
+    return backgroundImage;
+  }
 
-	public void setLines(Collection<RSSILine> lines) {
-		this.lines = lines;
-	}
+  public void setBackgroundImage(BufferedImage backgroundImage) {
+    this.backgroundImage = backgroundImage;
+  }
 
-	public TileViewPanel() {
-		super();
-	}
+  public Collection<RSSILine> getLines() {
+    return lines;
+  }
 
-	
-	
-	public void setTiles(final ScoredTile[][] tiles) {
-		this.tiles = tiles;
-		SwingUtilities.invokeLater(new Runnable() {
-			
-			@Override
-			public void run() {
-				TileViewPanel.this.repaint();
-			}
-		});
-	}
+  public void setLines(Collection<RSSILine> lines) {
+    this.lines = lines;
+  }
 
-	@Override
-	public String getToolTipText(MouseEvent me) {
+  public TileViewPanel() {
+    super();
+  }
 
-		return "TODO: Tool tips.";
+  public void setTiles(final String name, final ScoredTile[][] tiles) {
+    this.tiles.put(name, tiles);
+    SwingUtilities.invokeLater(new Runnable() {
 
-	}
+      @Override
+      public void run() {
+        TileViewPanel.this.repaint();
+      }
+    });
+  }
+  
+  public void clearTiles(){
+    this.tiles.clear();
+  }
 
-	public void paintComponent(Graphics g) {
-		super.paintComponent(g);
-		
-		if(!this.isVisible())
-			return;
-		
-		Graphics2D g2 = (Graphics2D) g;
+  @Override
+  public String getToolTipText(MouseEvent me) {
 
-		g2.setColor(Color.BLACK);
-		int screenWidth = this.getWidth();
-		int screenHeight = this.getHeight();
+    return "TODO: Tool tips.";
 
-		if(this.backgroundImage == null)
-		{
-			g2.fillRect(0, 0, screenWidth, screenHeight);
-		}
-		else
-		{
-			g2.drawImage(this.backgroundImage, 0, 0, screenWidth, screenHeight, 0, 0, this.backgroundImage.getWidth(), this.backgroundImage.getHeight(), null);
-		}
+  }
 
-		if (this.tiles == null)
-			return;
-		
-		Composite oneTenthComposite = this.makeComposite(0.1f);
+  public void paintComponent(Graphics g) {
+    super.paintComponent(g);
 
-		long startRender = System.currentTimeMillis();
+    if (!this.isVisible())
+      return;
 
+    Graphics2D g2 = (Graphics2D) g;
 
-	
-		// Grab a reference to the current tiles
-		ScoredTile[][] currTiles = this.tiles;
+    g2.setColor(Color.BLACK);
+    int screenWidth = this.getWidth();
+    int screenHeight = this.getHeight();
 
-		ScoredTile maxTile = currTiles[currTiles.length - 1][currTiles[currTiles.length - 1].length - 1];
+    if (this.backgroundImage == null) {
+      g2.fillRect(0, 0, screenWidth, screenHeight);
+    } else {
+      g2.drawImage(this.backgroundImage, 0, 0, screenWidth, screenHeight, 0, 0,
+          this.backgroundImage.getWidth(), this.backgroundImage.getHeight(),
+          null);
+    }
 
-		double regionWidth = maxTile.getTile().getX()
-				+ maxTile.getTile().getWidth();
+    if (this.tiles == null)
+      return;
 
-		double regionHeight = maxTile.getTile().getY()
-				+ maxTile.getTile().getHeight();
+    Composite oneTenthComposite = this.makeComposite(0.1f);
 
-		double xScale = screenWidth / regionWidth;
-		double yScale = screenHeight / regionHeight;
+    long startRender = System.currentTimeMillis();
 
-		Color origColor = g2.getColor();
-		Composite origComposite = g2.getComposite();		
-		
-		for (int x = 0; x < currTiles.length; ++x) {
-			for (int y = 0; y < currTiles[x].length; ++y) {
-				
-//				if(currTiles[x][y].getScore() < 0.01f)
-//					continue;
-				
-				float alpha = (float) currTiles[x][y].getScore() / 5f;
+    ArrayList<String> keys = new ArrayList<String>();
+    keys.addAll(this.tiles.keySet());
+    Collections.sort(keys);
+    int colorIndex = 0;
+    Color origColor = g2.getColor();
+    Composite origComposite = g2.getComposite();
+    double xScale = 1;
+    double yScale = 1;
+    for (String s : keys) {
+      // Grab a reference to the current tiles
 
-				if (alpha < 0) {
-					alpha = 0.0f;
-				}
+      ScoredTile[][] currTiles = this.tiles.get(s);
 
-				if (alpha > 1.0) {
-					alpha = 1.0f;
-				}
-				g2.setComposite(this.makeComposite(alpha));
-				g2.setColor(Color.BLUE);
-				Rectangle2D.Float drawRect = new Rectangle2D.Float();
+      ScoredTile maxTile = currTiles[currTiles.length - 1][currTiles[currTiles.length - 1].length - 1];
 
-				drawRect
-						.setRect(
-								currTiles[x][y].getTile().getX() * xScale,
-								(regionHeight
-										- currTiles[x][y].getTile().getY() - currTiles[x][y]
-										.getTile().getHeight())
-										* yScale, currTiles[x][y].getTile()
-										.getWidth()
-										* xScale, currTiles[x][y].getTile()
-										.getHeight()
-										* yScale);
-				g2.fill(drawRect);
-				g2.setColor(Color.DARK_GRAY);
-				g2.setComposite(oneTenthComposite);
-				g2.draw(drawRect);
+      double regionWidth = maxTile.getTile().getX()
+          + maxTile.getTile().getWidth();
 
-				g2.setComposite(origComposite);
-				g2.setColor(Color.WHITE);
-				if (currTiles[x][y].getScore() > 0)
-					g2.drawString(String.format("%04.2f", currTiles[x][y]
-							.getScore()), (int) drawRect.getX(),
-							(int) (drawRect.getY() + drawRect.getHeight()));
-			}
-		}
-		
-		g2.setColor(Color.GREEN);
-		
-		if(this.lines != null)
-		{
-			Collection<RSSILine> currLines = this.lines;
-			for(RSSILine line : currLines){
-				float alpha = line.getValue() / 10f;
-				if(alpha > 1)
-				{
-					alpha = 1f;
-				}
-				g2.setComposite(this.makeComposite(alpha));
-				g2.drawLine((int)(line.getLine().x1*xScale), (int)(screenHeight - line.getLine().y1*yScale), (int)(line.getLine().x2*xScale), (int)(screenHeight - line.getLine().y2*yScale));
-			}
-		}
-		g2.setComposite(origComposite);
-		
-		g2.setColor(origColor);
-		
+      double regionHeight = maxTile.getTile().getY()
+          + maxTile.getTile().getHeight();
 
-		long endRender = System.currentTimeMillis();
-		log.debug("Rendered in {}ms.", endRender - startRender);
+      xScale = screenWidth / regionWidth;
+      yScale = screenHeight / regionHeight;
 
-	}
+     
 
-	private AlphaComposite makeComposite(float alpha) {
-		int type = AlphaComposite.SRC_OVER;
-		return (AlphaComposite.getInstance(type, alpha));
-	}
+      for (int x = 0; x < currTiles.length; ++x) {
+        for (int y = 0; y < currTiles[x].length; ++y) {
+
+          // if(currTiles[x][y].getScore() < 0.01f)
+          // continue;
+
+          float alpha = (float) currTiles[x][y].getScore() / 5f;
+
+          if (alpha < 0) {
+            alpha = 0.0f;
+          }
+
+          if (alpha > 1.0) {
+            alpha = 1.0f;
+          }
+          g2.setComposite(this.makeComposite(alpha));
+          g2.setColor(COLOR_LIST[colorIndex]);
+          Rectangle2D.Float drawRect = new Rectangle2D.Float();
+
+          drawRect
+              .setRect(currTiles[x][y].getTile().getX() * xScale, (regionHeight
+                  - currTiles[x][y].getTile().getY() - currTiles[x][y]
+                  .getTile().getHeight()) * yScale, currTiles[x][y].getTile()
+                  .getWidth() * xScale, currTiles[x][y].getTile().getHeight()
+                  * yScale);
+          g2.fill(drawRect);
+          g2.setColor(Color.DARK_GRAY);
+          g2.setComposite(oneTenthComposite);
+          g2.draw(drawRect);
+
+          g2.setComposite(origComposite);
+          g2.setColor(Color.WHITE);
+          if (currTiles[x][y].getScore() > 0)
+            g2.drawString(String.format("%04.2f", currTiles[x][y].getScore()),
+                (int) drawRect.getX(),
+                (int) (drawRect.getY() + drawRect.getHeight()));
+        }
+      }
+      ++colorIndex;
+      if(colorIndex >= COLOR_LIST.length){
+        colorIndex = 0;
+      }
+    }
+
+    g2.setColor(Color.GREEN);
+
+    if (this.lines != null) {
+      Collection<RSSILine> currLines = this.lines;
+      for (RSSILine line : currLines) {
+        float alpha = line.getValue() / 10f;
+        if (alpha > 1) {
+          alpha = 1f;
+        }
+        g2.setComposite(this.makeComposite(alpha));
+        g2.drawLine((int) (line.getLine().x1 * xScale),
+            (int) (screenHeight - line.getLine().y1 * yScale),
+            (int) (line.getLine().x2 * xScale),
+            (int) (screenHeight - line.getLine().y2 * yScale));
+      }
+    }
+    g2.setComposite(origComposite);
+
+    g2.setColor(origColor);
+
+    long endRender = System.currentTimeMillis();
+    log.debug("Rendered in {}ms.", endRender - startRender);
+
+  }
+
+  private AlphaComposite makeComposite(float alpha) {
+    int type = AlphaComposite.SRC_OVER;
+    return (AlphaComposite.getInstance(type, alpha));
+  }
 }

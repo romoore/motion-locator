@@ -58,8 +58,11 @@ public class ScoredTile implements Cloneable {
 		return sb.toString();
 	}
 
+	/**
+	 * Copies this tile, including its score and a copy of the underlying Rectangle2D.
+	 */
 	@Override
-	public Object clone() {
+	public ScoredTile clone() {
 		ScoredTile newTile = new ScoredTile();
 		newTile.setScore(this.getScore());
 		newTile.setTile(new Rectangle2D.Float((float) this.tile.getX(),

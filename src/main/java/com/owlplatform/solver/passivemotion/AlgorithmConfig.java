@@ -30,10 +30,16 @@ public class AlgorithmConfig {
   protected float stdDevNoiseThreshold = 1.2f;
 
   protected float radiusThreshold = 90f;
+  
+  protected float linkMinDistance = 6f;
 
   protected float lineLengthPower = 1.1f;
   
   protected float desiredTileWidth = 20f;
 
   protected float desiredTileHeight = 20f;
+  
+  protected float neighborRatio = 0.5f;
+  
+  protected float peakRatio = 0.5f;
 }

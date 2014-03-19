@@ -25,6 +25,8 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.print.attribute.standard.Finishings;
@@ -64,6 +66,7 @@ public class PassiveMotionAlgorithm {
 
   protected StdDevFingerprintGenerator stdDevFingerprinter = new StdDevFingerprintGenerator();
 
+  /*
   static float[][] tileFilterKernel3x3a = new float[3][3];
   static float[][] tileFilterKernel3x3b = new float[3][3];
   static float[][] tileFilterKernel3x3c = new float[3][3];
@@ -93,7 +96,7 @@ public class PassiveMotionAlgorithm {
                                                     { -.1f, -.2f, 2.0f, -.2f, -.1f },
                                                     { -.1f, -.2f, -.2f, -.2f, -.1f},
                                                     { -.1f, -.1f, -.1f, -.1f, -.1f} };
-
+  */
   public PassiveMotionAlgorithm(AlgorithmConfig config) {
     super();
     this.config = config;
@@ -103,7 +106,7 @@ public class PassiveMotionAlgorithm {
 
   public void addVariance(final String receiver, final String transmitter,
       final float variance, final long timestamp) {
-
+    // log.debug("{}/{}: {}",transmitter,receiver,variance);
     this.stdDevFingerprinter.addVariance(transmitter, receiver, variance,
         timestamp);
   }
@@ -199,89 +202,79 @@ public class PassiveMotionAlgorithm {
     ScoredTile[][] baseRaw = this.createUnscoredTiles();
     result = new FilteredTileResult();
     result.setTiles(baseRaw);
-    resultSet.setTiles("base-raw", result);
+    resultSet.setTiles("base-raw-0", result);
 
-    ScoredTile[][] baseK3x3a = this.createUnscoredTiles();
-    result = new FilteredTileResult();
-    result.setTiles(baseK3x3a);
-    result.setKernel(tileFilterKernel3x3a);
-    resultSet.setTiles("base-k3x3a", result);
+    ScoredTile[][] finalTiles = this.createUnscoredTiles();
+    result.setTiles(finalTiles);
 
-    ScoredTile[][] baseK3x3c = this.createUnscoredTiles();
-    result = new FilteredTileResult();
-    result.setTiles(baseK3x3c);
-    result.setKernel(tileFilterKernel3x3c);
-    resultSet.setTiles("base-k3x3c", result);
+    int tileRound = 0;
 
-    result = new FilteredTileResult();
-    ScoredTile[][] baseK5x5a = this.createUnscoredTiles();
-    result.setTiles(baseK5x5a);
-    result.setKernel(tileFilterKernel5x5a);
-    resultSet.setTiles("base-k5x5a", result);
-
-    ArrayList<ScoredTile> baseTiles = this.calculateTileScores(baseRaw,
+    ArrayList<ScoredTile> totalTiles = new ArrayList<ScoredTile>();
+    ArrayList<ScoredTile> tempTiles = this.calculateTileScores(baseRaw,
         allLines);
+    // Now seek-out the maximum area and any neighbors adhering to the
+    // configuration
 
-    ScoredTile[][] microRaw = this.createMicroTiles(baseRaw);
-    result = new FilteredTileResult();
-    result.setTiles(microRaw);
-    resultSet.setTiles("micro-raw", result);
+    List<RSSILine> remainLines = new ArrayList<RSSILine>();
+    remainLines.addAll(allLines);
+    while (tempTiles != null && !tempTiles.isEmpty()) {
 
-    ScoredTile[][] microk3x3a = this.createMicroTiles(baseRaw);
-    result = new FilteredTileResult();
-    result.setTiles(microk3x3a);
-    result.setKernel(tileFilterKernel3x3a);
-    resultSet.setTiles("micro-k3x3a", result);
+      ++tileRound;
+      this.mergeTiles(finalTiles, baseRaw);
+      for (ScoredTile t : tempTiles) {
+        totalTiles.add(t.clone());
+      }
 
-    ScoredTile[][] microk3x3c = this.createMicroTiles(baseRaw);
-    result = new FilteredTileResult();
-    result.setTiles(microk3x3c);
-    result.setKernel(tileFilterKernel3x3c);
-    resultSet.setTiles("micro-k3x3c", result);
+      this.removeLines(remainLines, tempTiles);
+      if (remainLines.isEmpty()) {
+        break;
+      }
+      tempTiles = this.calculateTileScores(baseRaw, remainLines);
+      if (tempTiles != null && !tempTiles.isEmpty()) {
+        result = new FilteredTileResult();
+        result.setTiles(this.cloneTiles(baseRaw));
+        resultSet.setTiles("base-raw-" + (++tileRound), result);
+      }
+    }
 
-    ScoredTile[][] microk5x5a = this.createMicroTiles(baseRaw);
-    result = new FilteredTileResult();
-    result.setTiles(microk5x5a);
-    result.setKernel(tileFilterKernel5x5a);
-    resultSet.setTiles("micro-k5x5a", result);
-
-    ScoredTile[][] userDefined = this.createMicroTiles(baseRaw);
-    result = new FilteredTileResult();
-    result.setTiles(userDefined);
-    result.setKernel(this.userKernel);
-    resultSet.setTiles("User Defined", result);
-
-    // log.info("Macro tiles:\n{}", this.printScoreMap(unfilteredTiles));
-    // log.info("Micro tiles:\n{}", this.printScoreMap(microTiles));
-
-    ArrayList<ScoredTile> publishedTiles;
-
-    this.applyKernel(tileFilterKernel3x3a, baseRaw, baseK3x3a);
-
-    publishedTiles = this.applyKernel(tileFilterKernel3x3a, microRaw,
-        microk3x3a);
-
-    this.applyKernel(tileFilterKernel3x3c, baseRaw, baseK3x3c);
-
-    publishedTiles = this.applyKernel(tileFilterKernel3x3c, microRaw,
-        microk3x3c);
-
-    this.applyKernel(tileFilterKernel5x5a, baseRaw, baseK5x5a);
-
-    this.applyKernel(tileFilterKernel5x5a, microRaw, microk5x5a);
-
-    this.applyKernel(this.userKernel, microRaw, userDefined);
-
-    // this.applyHighPass(baseK5x5a, 5);
-
-    // this.applyHighPass(microk5x5a, 1);
-
-    resultSet.setTilesToPublish(publishedTiles);
-
-    log.info("\n" + this.printFancyMap(microRaw));
+    log.debug("Detected {} areas of motion.", Integer.valueOf(tileRound));
+    log.info("\n" + this.printFancyMap(finalTiles));
+    if (!totalTiles.isEmpty()) {
+      resultSet.setTilesToPublish(totalTiles);
+    }
 
     return resultSet;
 
+  }
+
+  /**
+   * Merges the highest scores of the two tile sets and updates
+   * {@code tilesToUpdate}.
+   */
+  protected void mergeTiles(ScoredTile[][] tilesToUpdate,
+      ScoredTile[][] tilesToSource) {
+    for (int x = 0; x < tilesToUpdate.length; ++x) {
+      for (int y = 0; y < tilesToUpdate[0].length; ++y) {
+        tilesToUpdate[x][y].setScore(Math.max(tilesToUpdate[x][y].getScore(),
+            tilesToSource[x][y].getScore()));
+      }
+    }
+  }
+
+  protected ScoredTile[][] cloneTiles(ScoredTile[][] origTiles) {
+    if (origTiles == null || origTiles.length == 0 || origTiles[0] == null
+        || origTiles[0].length == 0) {
+      return null;
+    }
+
+    ScoredTile[][] clone = new ScoredTile[origTiles.length][origTiles[0].length];
+    for (int x = 0; x < origTiles.length; ++x) {
+      for (int y = 0; y < origTiles[0].length; ++y) {
+        clone[x][y] = origTiles[x][y].clone();
+      }
+    }
+
+    return clone;
   }
 
   protected void applyHighPass(final ScoredTile[][] tiles, final float minScore) {
@@ -426,9 +419,9 @@ public class PassiveMotionAlgorithm {
           }
         }
 
-//        if (Math.abs(kernelSum) > 1) {
-//          outTiles[x][y].score /= kernelSum;
-//        }
+        // if (Math.abs(kernelSum) > 1) {
+        // outTiles[x][y].score /= kernelSum;
+        // }
 
         if (outTiles[x][y].getScore() < 0) {
           outTiles[x][y].setScore(0f);
@@ -439,7 +432,7 @@ public class PassiveMotionAlgorithm {
         // }
 
         if (outTiles[x][y].getScore() > 0) {
-          solutionTiles.add(outTiles[x][y]);
+          solutionTiles.add(outTiles[x][y].clone());
         }
 
       }
@@ -462,22 +455,39 @@ public class PassiveMotionAlgorithm {
     // Calculate raw scores for each tile
     for (int x = 0; x < allTiles.length; ++x) {
       for (int y = 0; y < allTiles[x].length; ++y) {
+        // Number of terminating lines in this tile
+        int numTerminating = 0;
         // Clear the score to 0
         allTiles[x][y].setScore(0);
         for (RSSILine line : allLines) {
           // Make sure line isn't too far away
           Rectangle2D.Float theTile = allTiles[x][y].getTile();
+          if (theTile.contains(line.getLine().getP1())) {
+            ++numTerminating;
+          }
+          if (theTile.contains(line.getLine().getP2())) {
+            ++numTerminating;
+          }
           Point2D.Float tileCenter = new Point2D.Float(theTile.x
               + theTile.width / 2, theTile.y + theTile.height / 2);
+          double d1 = Math.sqrt(Math.pow(tileCenter.x - line.getLine().x1, 2)
+              + Math.pow(tileCenter.y - line.getLine().y1, 2));
+
           // Check P1 distance (receiver)
-          if (Math.sqrt(Math.pow(tileCenter.x - line.getLine().x1, 2)
-              + Math.pow(tileCenter.y - line.getLine().y1, 2)) > this.config.radiusThreshold) {
+          if (d1 > this.config.radiusThreshold) {
+            continue;
+          }
+          double d2 = Math.sqrt(Math.pow(tileCenter.x - line.getLine().x2, 2)
+              + Math.pow(tileCenter.y - line.getLine().y2, 2));
+          // Check P2 distance (transmitter)
+          if (d2 > this.config.radiusThreshold) {
             continue;
           }
 
-          // Check P2 distance (transmitter)
-          if (Math.sqrt(Math.pow(tileCenter.x - line.getLine().x2, 2)
-              + Math.pow(tileCenter.y - line.getLine().y2, 2)) > this.config.radiusThreshold) {
+          float lineLength = (float) Math.sqrt(Math.pow(line.getLine().x1
+              - line.getLine().x2, 2)
+              + Math.pow(line.getLine().y1 - line.getLine().y2, 2));
+          if (lineLength < this.config.linkMinDistance) {
             continue;
           }
 
@@ -486,15 +496,15 @@ public class PassiveMotionAlgorithm {
             continue;
           }
 
-          float lineLength = (float) Math.sqrt(Math.pow(line.getLine().x1
-              - line.getLine().x2, 2)
-              + Math.pow(line.getLine().y1 - line.getLine().y2, 2));
-
           float numerator = line.getValue() - this.config.stdDevNoiseThreshold;
           allTiles[x][y].score += (float) (numerator / (Math.pow(lineLength,
               this.config.lineLengthPower)));
 
         }
+        // if(numTerminating > 1){
+        // allTiles[x][y].score = allTiles[x][y].score /
+        // (float)Math.sqrt(numTerminating);
+        // }
 
         // allTiles[x][y].score = allTiles[x][y].score *100f /
         // (allTiles[x][y].tile.height*allTiles[x][y].tile.width);
@@ -510,6 +520,16 @@ public class PassiveMotionAlgorithm {
 
       }
     }
+
+    this.findMaxAreas(allTiles);
+
+    for (Iterator<ScoredTile> iter = solutionTiles.iterator(); iter.hasNext();) {
+      ScoredTile t = iter.next();
+      if (t.getScore() < this.config.tileScoreThreshold) {
+        iter.remove();
+      }
+    }
+
     return solutionTiles;
   }
 
@@ -561,6 +581,95 @@ public class PassiveMotionAlgorithm {
     return allLines;
   }
 
+  protected void findMaxAreas(ScoredTile[][] tiles) {
+    float maxVal = -1;
+    int maxTileX = 0;
+    int maxTileY = 0;
+    // Determine max value
+    for (int x = 0; x < tiles.length; ++x) {
+      for (int y = 0; y < tiles[0].length; ++y) {
+        if (tiles[x][y].getScore() > maxVal) {
+          maxVal = tiles[x][y].getScore();
+          maxTileX = x;
+          maxTileY = y;
+        }
+      }
+    }
+
+    log.debug("MAX VALUE: {}", maxVal);
+
+    float minScore = maxVal * this.config.peakRatio;
+    // Remove tiles below half of max
+    for (int x = 0; x < tiles.length; ++x) {
+      for (int y = 0; y < tiles[0].length; ++y) {
+        if (tiles[x][y].getScore() < minScore) {
+          tiles[x][y].setScore(0);
+        }
+      }
+    }
+
+    // Now seek out the maxTile's neighbors, seeking "gradual" reductions
+    // nearby, trimming significant drops in score
+    if (maxVal > 0) {
+      this.trimNeighbors(tiles, maxTileX, maxTileY, maxVal, (byte) (MASK_N
+          | MASK_S | MASK_E | MASK_W));
+    }
+  }
+
+  private static final byte MASK_N = 0x08;
+  private static final byte MASK_S = 0x04;
+  private static final byte MASK_E = 0x02;
+  private static final byte MASK_W = 0x01;
+
+  /*
+   * Direction = NSEW (bitfield)
+   * NE = 1010
+   * SW = 0101
+   * N  = 1000
+   * S  = 0100
+   */
+  protected void trimNeighbors(ScoredTile[][] tiles, int x, int y,
+      float prevNeighborScore, byte direction) {
+    float currScore = tiles[x][y].getScore();
+
+    if (prevNeighborScore < 0.01 || currScore > prevNeighborScore
+        || currScore < prevNeighborScore * this.config.neighborRatio) {
+
+      tiles[x][y].setScore(0);
+      currScore = 0;
+    }
+    // float nScore = currScore * this.config.neighborRatio;
+    // Can only go north if north bit set
+    if ((direction & MASK_N) != 0 && y < tiles[x].length - 1) {
+      // Can only go NW if north + west bits set
+      if ((direction & MASK_W) != 0 && x > 0) {
+        trimNeighbors(tiles, x - 1, y + 1, currScore, (byte) (MASK_N | MASK_W));
+      }
+      // Can only go NE if north+east bits set
+      if ((direction & MASK_E) != 0 && x < tiles.length - 1) {
+        trimNeighbors(tiles, x + 1, y + 1, currScore, (byte) (MASK_N | MASK_E));
+      }
+      // Go north
+      trimNeighbors(tiles, x, y + 1, currScore, MASK_N);
+    }
+    // Can only go south if south bit set
+    if ((direction & MASK_S) != 0 && y > 0) {
+      if ((direction & MASK_W) != 0 && x > 0) {
+        trimNeighbors(tiles, x - 1, y - 1, currScore, (byte) (MASK_S | MASK_W));
+      }
+      if ((direction & MASK_E) != 0 && x < tiles.length - 1) {
+        trimNeighbors(tiles, x + 1, y - 1, currScore, (byte) (MASK_S | MASK_E));
+      }
+      trimNeighbors(tiles, x, y - 1, currScore, MASK_S);
+    }
+    if ((direction & MASK_E) != 0 && x < tiles.length - 1) {
+      trimNeighbors(tiles, x + 1, y, currScore, MASK_E);
+    }
+    if ((direction & MASK_W) != 0 && x > 0) {
+      trimNeighbors(tiles, x - 1, y, currScore, MASK_W);
+    }
+  }
+
   protected ArrayList<Fingerprint> calculateFingerprints() {
     ArrayList<Fingerprint> fingerprints = new ArrayList<Fingerprint>();
     for (Receiver receiver : this.receivers.values()) {
@@ -599,6 +708,24 @@ public class PassiveMotionAlgorithm {
 
     log.debug("Created tiles {} x {}", allTiles.length, allTiles[0].length);
     return allTiles;
+  }
+
+  protected List<RSSILine> removeLines(final List<RSSILine> origLines,
+      final List<ScoredTile> origTiles) {
+    ArrayList<RSSILine> returnedLines = new ArrayList<RSSILine>();
+    returnedLines.addAll(origLines);
+
+    for (Iterator<RSSILine> iter = origLines.iterator(); iter.hasNext();) {
+      RSSILine l = iter.next();
+      for (ScoredTile t : origTiles) {
+        if (t.tile.intersectsLine(l.getLine())) {
+          iter.remove();
+          break;
+        }
+      }
+    }
+
+    return returnedLines;
   }
 
   private final String printScoreMap(ScoredTile[][] allTiles) {
@@ -659,12 +786,13 @@ public class PassiveMotionAlgorithm {
       StdDevFingerprintGenerator stdDevFingerprinter) {
     this.stdDevFingerprinter = stdDevFingerprinter;
   }
+  /*
+    public float[][] getCustomKernel() {
+      return this.userKernel;
+    }
 
-  public float[][] getCustomKernel() {
-    return this.userKernel;
-  }
-
-  public void setCustomKernel(float[][] customKernel) {
-    this.userKernel = customKernel;
-  }
+    public void setCustomKernel(float[][] customKernel) {
+      this.userKernel = customKernel;
+    }
+    */
 }

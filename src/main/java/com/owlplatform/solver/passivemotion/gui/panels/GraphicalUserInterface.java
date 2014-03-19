@@ -24,7 +24,6 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.image.BufferedImage;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,21 +31,18 @@ import java.util.concurrent.Executors;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
-import javax.swing.SwingUtilities;
 
+import com.owlplatform.solver.passivemotion.FilteredTileResult;
 import com.owlplatform.solver.passivemotion.FilteredTileResultSet;
-import com.owlplatform.solver.passivemotion.ScoredTile;
 
 public class GraphicalUserInterface extends JFrame implements
     UserInterfaceAdapter {
 
-  protected final ConcurrentLinkedQueue<FilteredTileResultSet> tileHistory = new ConcurrentLinkedQueue<FilteredTileResultSet>();
-
-  protected ConcurrentHashMap<String, TileViewPanel> tilePanels = new ConcurrentHashMap<String, TileViewPanel>();
+  protected final TileViewPanel tilePanel = new TileViewPanel();
 
   protected JTabbedPane tabbedPane = new JTabbedPane();
 
-  protected KernelPanel customKernelPanel = new KernelPanel();
+  // protected KernelPanel customKernelPanel = new KernelPanel();
 
   protected BufferedImage backgroundImage = null;
 
@@ -55,21 +51,23 @@ public class GraphicalUserInterface extends JFrame implements
 
   public GraphicalUserInterface() {
     super();
-    
+    this.tabbedPane.add("main", this.tilePanel);
     this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     this.setPreferredSize(new Dimension(800, 600));
     this.setLayout(new BorderLayout());
     this.add(BorderLayout.CENTER, this.tabbedPane);
     JPanel flowPanel = new JPanel(new FlowLayout());
-    flowPanel.add(this.customKernelPanel);
+    // flowPanel.add(this.customKernelPanel);
     this.add(BorderLayout.SOUTH, flowPanel);
     this.pack();
     this.setVisible(true);
   }
-  
+
+  /*
   public void setCustomKernel(float[][] kernel){
     this.customKernelPanel.setKernel(kernel);
   }
+  */
 
   @Override
   public void solutionGenerated(final FilteredTileResultSet tileSet) {
@@ -81,24 +79,15 @@ public class GraphicalUserInterface extends JFrame implements
 
       @Override
       public void run() {
-        // TODO: Add history?
-        GraphicalUserInterface.this.tileHistory.poll();
-        GraphicalUserInterface.this.tileHistory.add(tileSet);
-
+        GraphicalUserInterface.this.tilePanel.clearTiles();
         for (String desc : tileSet.getResults().keySet()) {
-          TileViewPanel panel = null;
-          synchronized (GraphicalUserInterface.this.tilePanels) {
-            panel = GraphicalUserInterface.this.tilePanels.get(desc);
-            if (panel == null) {
-              panel = new TileViewPanel();
-              panel
-                  .setBackgroundImage(GraphicalUserInterface.this.backgroundImage);
-              GraphicalUserInterface.this.tilePanels.put(desc, panel);
-              GraphicalUserInterface.this.tabbedPane.add(desc, panel);
-            }
+
+          GraphicalUserInterface.this.tilePanel.setLines(tileSet.getLines());
+
+          FilteredTileResult res = tileSet.getResult(desc);
+          if (res != null && res.getTiles() != null) {
+            GraphicalUserInterface.this.tilePanel.setTiles(desc, res.getTiles());
           }
-          panel.setLines(tileSet.getLines());
-          panel.setTiles(tileSet.getResult(desc).getTiles());
 
         }
       }
@@ -108,9 +97,9 @@ public class GraphicalUserInterface extends JFrame implements
   @Override
   public void setBackground(BufferedImage backgroundImage) {
     this.backgroundImage = backgroundImage;
-    for (TileViewPanel panel : this.tilePanels.values()) {
-      panel.setBackgroundImage(backgroundImage);
-    }
+
+    this.tilePanel.setBackgroundImage(backgroundImage);
+
   }
 
 }

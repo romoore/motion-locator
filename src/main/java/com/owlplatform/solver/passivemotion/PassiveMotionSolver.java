@@ -87,6 +87,7 @@ public class PassiveMotionSolver extends Thread {
             && this.keepRunning) {
           try {
             state = rssiResponse.next();
+            
 
             if (state == null) {
               break;
@@ -200,11 +201,11 @@ public class PassiveMotionSolver extends Thread {
                 }
                 for (Attribute field : fields) {
                   // X-coordinate
-                  if ("location.x".equalsIgnoreCase(field.getAttributeName())) {
+                  if ("location.xoffset".equalsIgnoreCase(field.getAttributeName())) {
                     Double xPos = (Double) DataConverter.decode(
                         field.getAttributeName(), field.getData());
                     txer.setxLocation(xPos.floatValue());
-                  } else if ("location.y".equalsIgnoreCase(field
+                  } else if ("location.yoffset".equalsIgnoreCase(field
                       .getAttributeName())) {
                     Double yPos = (Double) DataConverter.decode(
                         field.getAttributeName(), field.getData());
@@ -237,10 +238,10 @@ public class PassiveMotionSolver extends Thread {
                 }
                 for (Attribute field : fields) {
                   // X-coordinate
-                  if ("location.x".equalsIgnoreCase(field.getAttributeName())) {
+                  if ("location.xoffset".equalsIgnoreCase(field.getAttributeName())) {
                     Double xPos = DoubleConverter.get().decode(field.getData());
                     rxer.setxLocation(xPos.floatValue());
-                  } else if ("location.y".equalsIgnoreCase(field
+                  } else if ("location.yoffset".equalsIgnoreCase(field
                       .getAttributeName())) {
                     Double yPos = DoubleConverter.get().decode(field.getData());
                     rxer.setyLocation(yPos.floatValue());
@@ -393,7 +394,7 @@ public class PassiveMotionSolver extends Thread {
   public void run() {
 
     if(this.userInterface != null){
-      this.userInterface.setCustomKernel(this.algorithm.getCustomKernel());
+//      this.userInterface.setCustomKernel(this.algorithm.getCustomKernel());
     }
     
     // Connect to aggregator, distributor, and world server
@@ -421,7 +422,7 @@ public class PassiveMotionSolver extends Thread {
           this.userInterface.solutionGenerated(resultSet);
         }
         if (resultSet != null && resultSet.getTilesToPublish() != null
-            && resultSet.getTilesToPublish().size() > 0) {
+            && !resultSet.getTilesToPublish().isEmpty()) {
           Collection<ScoredTile> tiles = resultSet.getTilesToPublish();
 
           ByteBuffer solutionBytes = ByteBuffer.allocate(tiles.size() * 20);
@@ -439,8 +440,8 @@ public class PassiveMotionSolver extends Thread {
           solution.setId(this.algorithm.getRegionId());
           solution.setAttributeName(GENERATED_ATTRIBUTE_NAME);
 
-//          this.solverWM.updateAttribute(solution);
-//          log.info("Sent {}", solution);
+          this.solverWM.updateAttribute(solution);
+          log.info("Sent {}", solution);
         }
         lastUpdateTime = now;
       }
