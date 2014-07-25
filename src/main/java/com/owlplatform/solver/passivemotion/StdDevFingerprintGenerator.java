@@ -100,7 +100,7 @@ public class StdDevFingerprintGenerator {
       return null;
     }
     long now = System.currentTimeMillis();
-    long oldestTime = now - this.maxSampleAge;
+    long oldestTime = 0;//now - this.maxSampleAge;
     // Fingerprint fingerprint = new Fingerprint();
     // fingerprint.setFingerprintName("StdDev");
     // fingerprint.setTransmitterId(transmitterId);
