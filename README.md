@@ -62,13 +62,14 @@ host/IP, client port, and a region name as commandline parameters:
 
 # Data Format #
 
-Motion Locator produces Attribute values in the Owl Platform World Model with
-a name of "passive motion.tile" and an Origin string of
+Motion Locator produces Attribute values in the Owl Platform World Model with a
+name of "passive motion.tile" and an Origin string of
 "java.solver.pass_motion.v2".  The data in the Attribute is of the form
 {&lt;X1&gt;&lt;Y1&gt;&lt;X2&gt;&lt;Y2&gt;&lt;Score&gt;}<sup>+</sup>, where X1
-and Y1 are the x- and y-coordinates, respectively, of the upper-left corner
-of the rectangle in graphical coordinates (origin is in the upper-left).  X2
-and Y2 are the x- and y-coordinates, respectively, of the lower-right corner
-of the rectangle, and Score is the weighted score of the tile.  A higher
-score is a more likely point of motion.  Each Attribute value may have 1 or
+and Y1 are the x- and y-coordinates, respectively, of the upper-left corner of
+the rectangle in graphical coordinates (origin is in the upper-left).  X2 and
+Y2 are the x- and y-coordinates, respectively, of the lower-right corner of the
+rectangle, and Score is the weighted score of the tile.  A higher score is a
+more likely point of motion.  Each of the x- and y-coordinates and the Score
+value are a 4-byte floating point number. Each Attribute value may have 1 or
 more of these rectangle-score tuples, and they may overlap.
